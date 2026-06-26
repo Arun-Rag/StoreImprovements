@@ -1,0 +1,19 @@
+# Scratch / build artifacts
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+
+# Local test & render outputs (not part of the app)
+*.pdf
+*_b64.txt
+test*.js
+wtest*.js
+shot.js
+gen*.js
+wr*.js
+wt*.js
+art*.js
+parse*.js
+*-[0-9].png
+wcheck*.html

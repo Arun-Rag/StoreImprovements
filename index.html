@@ -1,0 +1,657 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amapola Flyg — Customs Invoice Generator</title>
+<style>
+  :root{color-scheme:light;--blue:#1577b8;--dark:#0f3a57;--ink:#1c1c1c;--line:#cfd6dc;--bg:#f3f6f8;--panel:#fff;--muted:#5d6b76;--ok:#1a7f4b;--warn:#b06b00}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Segoe UI',Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);font-size:13px}
+  .wrap{max-width:1180px;margin:0 auto;padding:16px}
+  header.app{display:flex;align-items:center;gap:14px;border-bottom:3px solid var(--blue);padding-bottom:10px;margin-bottom:16px}
+  header.app img{height:42px}
+  header.app h1{font-size:17px;margin:0;color:var(--dark)}
+  header.app .sub{color:var(--muted);font-size:12px;margin-top:2px}
+  .layout{display:grid;grid-template-columns:410px 1fr;gap:18px;align-items:start}
+  @media(max-width:920px){.layout{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);margin-bottom:14px}
+  .card h2{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--dark);margin:0 0 10px}
+  label{display:block;font-size:11px;color:var(--muted);margin:8px 0 3px;font-weight:600}
+  input,select,textarea{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-size:12.5px;font-family:inherit;background:#fff;color:var(--ink)}
+  textarea{resize:vertical;min-height:48px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
+  .hint{font-size:11px;color:var(--muted);margin-top:4px}
+  .items{width:100%;border-collapse:collapse;margin-top:6px}
+  .items th{font-size:9px;text-transform:uppercase;color:var(--muted);text-align:left;padding:3px 2px;border-bottom:1px solid var(--line)}
+  .items td{padding:2px 1px;vertical-align:top}
+  .items input{padding:4px 4px;font-size:11px}
+  .items td.num input{text-align:right}
+  .btn{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:7px;padding:8px 13px;font-size:12.5px;font-weight:600;cursor:pointer}
+  .btn.primary{background:var(--blue);color:#fff}
+  .btn.ghost{background:#fff;border:1px solid var(--line);color:var(--dark)}
+  .btn.sm{padding:5px 9px;font-size:11.5px}
+  .btn:hover{filter:brightness(.96)}
+  .toolbar{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:12px}
+  .banner{padding:10px 12px;border-radius:8px;font-size:12.5px;margin-bottom:12px;border:1px solid}
+  .banner.none{background:#eafaf0;border-color:#bfe6cf;color:var(--ok)}
+  .banner.docs{background:#fff6e8;border-color:#f0d8a8;color:var(--warn)}
+  .banner.idle{background:#eef4f8;border-color:#cfe0ec;color:var(--dark)}
+  .addrow{margin-top:7px}
+  .uploader{border:2px dashed var(--blue);border-radius:9px;padding:14px;margin-bottom:12px;background:#f3f9fd;text-align:center}
+  .uploader.drag{background:#e3f1fb;border-color:var(--dark)}
+  #parseStatus{margin-top:6px}
+  #parseStatus.ok{color:var(--ok);font-weight:600}
+  #parseStatus.err{color:#b00;font-weight:600}
+  .usaBox{border:1px dashed #c9b48a;background:#fffdf6;border-radius:8px;padding:11px;margin-top:10px;display:none}
+  .usaBox.show{display:block}
+  .usaBox h3{margin:0 0 6px;font-size:11px;color:var(--warn);text-transform:uppercase;letter-spacing:.04em}
+  .placeholder{background:#fff;border:1px dashed var(--line);border-radius:10px;padding:60px 30px;text-align:center;color:var(--muted)}
+  .placeholder .big{font-size:15px;color:var(--dark);font-weight:600;margin-bottom:6px}
+  .preview{display:flex;flex-direction:column;gap:20px}
+  .doc{background:#fff;border:1px solid var(--line);border-radius:8px;padding:40px 44px;box-shadow:0 1px 4px rgba(0,0,0,.06);color:#000;font-size:12.5px;line-height:1.5}
+  .doc .dlogo{height:38px;margin-bottom:4px}
+  .doc .docdate{text-align:right;font-size:11.5px;color:#333}
+  .doc h2.title{font-size:19px;letter-spacing:.05em;margin:4px 0 14px;color:#000}
+  .doc table.fromto{width:100%;border-collapse:collapse;margin-bottom:12px}
+  .doc table.fromto td{vertical-align:top;padding:0 18px 0 0;width:33%}
+  .doc .blk b{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#444;margin-bottom:3px}
+  .doc .blk .l{white-space:pre-line;font-size:12px}
+  .doc .shipdetails{border:1px solid #bbb;border-radius:5px;padding:7px 10px;font-size:11.5px;margin-bottom:10px;background:#f7fafc}
+  .citab{width:100%;border-collapse:collapse;margin:8px 0}
+  .citab th,.citab td{border:1px solid #555;padding:5px 6px;font-size:11px}
+  .citab th{background:#eef3f7;text-align:left;font-size:9.5px;text-transform:uppercase}
+  .citab td.r,.citab th.r{text-align:right}
+  .totbox{width:54%;margin-left:46%;border-collapse:collapse;margin-top:6px}
+  .totbox td{padding:3px 7px;font-size:12px}
+  .totbox td.r{text-align:right}
+  .totbox tr.grand td{border-top:2px solid #000;font-weight:700;font-size:13.5px}
+  .doc .meta{font-size:11.5px;margin:6px 0}
+  .doc .reason{margin-top:10px;font-size:12px}
+  .doc table.sign{width:100%;border-collapse:collapse;margin-top:34px}
+  .doc table.sign td{width:50%;vertical-align:bottom;padding:26px 16px 0 0}
+  .doc .sign .sl{border-top:1px solid #000;padding-top:4px;font-size:11px;color:#333}
+  .doc .sigblock{margin-top:40px;max-width:360px}
+  .doc .sigblock .cert{font-size:11px;color:#333;margin-bottom:30px}
+  .doc .sigblock .fld{margin-bottom:15px}
+  .doc .sigblock .fld .v{min-height:16px;font-size:11.5px;color:#222}
+  .doc .sigblock .fld .cap{border-top:1px solid #000;padding-top:3px;font-size:10px;color:#555}
+  table.cbp{border:2px solid #000;margin-top:8px;border-collapse:collapse;width:100%;table-layout:fixed}
+  table.cbp td{border:1px solid #000;padding:5px 6px;vertical-align:top}
+  table.cbp td .lab{font-size:9px;text-transform:uppercase;color:#333}
+  table.cbp td .v{font-size:12px;margin-top:2px}
+  table.cbp td .chk{font-size:11.5px}
+  .fs p.body{font-size:13px;line-height:1.7}
+  .blank{border-bottom:1px solid #000;display:inline-block;min-width:110px;padding:0 4px;font-weight:600}
+  .note{font-size:10.5px;color:#666;margin-top:24px;border-top:1px solid #ccc;padding-top:6px}
+  .verifyflag{color:#b00;font-weight:600}
+  @media print{
+    body{background:#fff}.wrap{max-width:none;padding:0}.noprint{display:none!important}.layout{display:block}.preview{gap:0}
+    .doc{border:0;border-radius:0;box-shadow:none;padding:12mm 14mm;page-break-after:always}.doc:last-child{page-break-after:auto}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="app noprint">
+    <img src="data:image/png;base64,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" alt="amapola.nu">
+    <div><h1>Customs Invoice Generator</h1>
+      <div class="sub">Amapola Flyg AB · aircraft parts for repair &amp; return · EORI SE5564136595</div></div>
+  </header>
+
+  <div class="layout">
+    <div class="noprint">
+      <div class="card">
+        <h2>1 · Upload the order</h2>
+        <div class="uploader" id="dropZone">
+          <input type="file" id="pdfFile" accept="application/pdf" multiple hidden>
+          <button class="btn primary" id="uploadBtn" style="width:100%">📄 Upload SO / SM / RO PDF(s)</button>
+          <div class="hint" id="parseStatus">All fields stay empty until you upload. Select <b>one or several</b> order PDFs (Ctrl/Shift-click, or drag a group here) — they combine into one invoice. The documents fill P/N, S/N, B/N, description, ship-to and destination; manufacturer &amp; handling airport fill automatically.</div>
+        </div>
+        <div class="row2">
+          <div><label>Reference</label><input id="refNo" placeholder="from document"></div>
+          <div><label>Invoice date</label><input id="invDate" type="date"></div>
+        </div>
+        <input type="hidden" id="refType" value="">
+        <div class="row2">
+          <div><label>Destination country</label><select id="country"></select></div>
+          <div><label>Currency</label><select id="currency"></select></div>
+        </div>
+        <div class="hint" id="countryHint"></div>
+        <label>Reason for export</label>
+        <input id="reason" placeholder="from document">
+        <div class="row2">
+          <div><label>Prepared by (name) — optional</label><input id="byName" placeholder="leave blank to sign by hand"></div>
+          <div><label>Position / title — optional</label><input id="byTitle" placeholder="e.g. Rotable Controller"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>2 · Ship to / Consignee <span class="hint" style="text-transform:none;font-weight:400">(from document)</span></h2>
+        <label>Company</label><input id="toCompany" placeholder="from document">
+        <label>Address</label><textarea id="toAddress" placeholder="from document"></textarea>
+        <div class="row2"><div><label>Contact</label><input id="toContact"></div><div><label>E-mail</label><input id="toEmail"></div></div>
+        <label>Customer ID (optional)</label><input id="custId">
+      </div>
+
+      <div class="card">
+        <h2>3 · Line items <span class="hint" style="text-transform:none;font-weight:400">(P/N · S/N · B/N · description from document)</span></h2>
+        <table class="items"><thead><tr><th>P/N</th><th>S/N</th><th>B/N</th><th>Description</th><th>HS code</th><th>Origin</th><th style="width:28px">Qty</th><th style="width:54px">Unit price</th><th></th></tr></thead><tbody id="itemBody"></tbody></table>
+        <button class="btn ghost sm addrow" id="addRow">+ Add line</button>
+        <button class="btn ghost sm addrow" id="copyVal" title="Copy the first unit price into every row">↓ Same price for all</button>
+        <button class="btn ghost sm addrow" id="fillBtn" title="Fill manufacturer, origin and handling airport">✨ Smart fill (manufacturer &amp; airport)</button>
+        <div class="hint" id="fillStatus"></div>
+      </div>
+
+      <div class="card">
+        <h2>4 · Shipment / package</h2>
+        <div class="row3">
+          <div><label>No. of boxes</label><input id="boxes" placeholder="1"></div>
+          <div><label>Net weight (kg)</label><input id="netWeight" class="num" placeholder="e.g. 1.10"></div>
+          <div><label>Gross weight (kg)</label><input id="weight" class="num" placeholder="e.g. 1.32"></div>
+        </div>
+        <label>Box / package L×W×H (cm)</label><input id="boxDim" placeholder="e.g. 52*33*25">
+        <div class="row2">
+          <div><label>Transport company (carrier)</label><input id="carrier" placeholder="e.g. FedEx, DHL, TNT"></div>
+          <div><label>Transport value (freight)</label><input id="freight" class="num" placeholder="0.00"></div>
+        </div>
+        <div class="row2">
+          <div><label>Insurance</label><input id="insurance" class="num"></div>
+          <div><label>Tax rate %</label><input id="taxrate" class="num"></div>
+        </div>
+        <label>Handling airport (destination) <span class="hint" style="text-transform:none;font-weight:400">— auto from country</span></label>
+        <input id="destAirport" placeholder="auto">
+        <label>Special handling note (e.g. DG / hazmat)</label>
+        <input id="handling" placeholder="optional">
+        <label style="margin-top:10px;display:flex;align-items:center;gap:6px;font-weight:600"><input type="checkbox" id="pkgList" style="width:auto;margin:0">Also generate a Packing List (auto for Brazil)</label>
+
+        <div class="usaBox" id="usaBox">
+          <h3>USA — declaration details (CBP 3311 + Foreign Shipper)</h3>
+          <div class="row2">
+            <div><label>Manufacturer</label><input id="usMfr" placeholder="auto / from library"></div>
+            <div><label>City &amp; state of manufacture</label><input id="usMfrCity" placeholder="auto / from library"></div>
+          </div>
+          <div class="row2">
+            <div><label>U.S. port of export (original)</label><input id="usPort"></div>
+            <div><label>Exported on or about</label><input id="usExportDate" type="date"></div>
+          </div>
+          <div class="row2">
+            <div><label>Port of entry (return)</label><input id="usEntryPort" placeholder="auto"></div>
+            <div><label>Reason for return</label><input id="usReason"></div>
+          </div>
+          <div class="row3">
+            <div><label>Drawback</label><select id="usDrawback"><option>UNCLAIMED</option><option>CLAIMED</option></select></div>
+            <div><label>HTSUS 9813.00.05?</label><select id="usHts"><option>NO</option><option>YES</option></select></div>
+            <div><label>Declarant</label><input id="usDeclName" placeholder="uses ‘Prepared by’ if blank"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>5 · Wood packaging (ISPM 15) <span class="hint" style="text-transform:none;font-weight:400">— pallets / wooden boxes</span></h2>
+        <div class="row2">
+          <div><label>Packaging type</label><select id="pkgType"><option value="">— none / carton —</option><option>EPAL Euro pallet</option><option>Other wooden pallet</option><option>Wooden box / crate</option></select></div>
+          <div><label>Treatment</label><select id="pkgTreat"><option value="">— not applicable —</option><option value="HT">Heat treated (HT) — ISPM 15</option><option value="MB">Fumigated (MB) — chemical</option></select></div>
+        </div>
+        <div class="row2">
+          <div><label>IPPC mark — country code</label><input id="ippcCountry" placeholder="e.g. SE"></div>
+          <div><label>IPPC registration no.</label><input id="ippcReg" placeholder="from the stamp on the pallet"></div>
+        </div>
+        <div class="row2">
+          <div><label>No. of pallets / wooden units</label><input id="pkgUnits" placeholder="1"></div>
+          <div><label>Treatment / packing date</label><input id="pkgDate" type="date"></div>
+        </div>
+        <div class="hint">EPAL pallets are already heat-treated (HT) and carry the IPPC mark — pick “EPAL Euro pallet” + “Heat treated” and a treatment declaration is generated. Read the country code &amp; registration number from the IPPC stamp on the pallet.</div>
+      </div>
+
+      <div class="card">
+        <h2>6 · Signature <span class="hint" style="text-transform:none;font-weight:400">(optional)</span></h2>
+        <div class="hint">Draw with your mouse/finger, or upload an image of your signature. It appears on the invoice and the USA declarations, and is saved in this browser for next time.</div>
+        <canvas id="sigPad" width="320" height="120" style="border:1px solid var(--line);border-radius:6px;width:100%;height:120px;touch-action:none;background:#fff;cursor:crosshair;margin-top:8px"></canvas>
+        <div style="margin-top:7px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn ghost sm" id="sigClear">Clear</button>
+          <button class="btn ghost sm" id="sigUploadBtn">⬆ Upload image</button>
+          <input type="file" id="sigFile" accept="image/*" hidden>
+          <button class="btn ghost sm" id="sigSave">💾 Save</button>
+        </div>
+        <div class="hint" id="sigStatus"></div>
+      </div>
+
+      <div class="card">
+        <h2>Parts library</h2>
+        <div class="hint">Manufacturer/origin are remembered per part in this browser. Pre-loaded: P/N 70268 (Eaton), PS870 sealant (PPG).
+          <div style="margin-top:6px"><button class="btn ghost sm" id="saveParts">💾 Save current parts</button> <button class="btn ghost sm" id="clearLib">Clear added</button></div>
+        </div>
+        <div class="hint" id="libStatus"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="toolbar noprint">
+        <button class="btn primary" id="genBtn">↻ Refresh preview</button>
+        <button class="btn ghost" id="printBtn">🖨 Print / Save as PDF</button>
+        <button class="btn ghost" id="resetBtn">↺ Clear all</button>
+      </div>
+      <div class="banner idle noprint" id="banner"></div>
+      <div class="preview" id="preview"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+const SENDER={company:"Amapola Flyg AB",addr:"PO Box 57, 230 32 Malmö-Sturup, Sweden",hangar:"Hangarvägen 8, 233 71 Malmö-Sturup, Sweden",eori:"SE5564136595",tariff:"88073000",contact:"Arun Raghavan",title:"Rotable Controller",phone:"+46 761 469012",email:"arun.raghavan@amapola.nu"};
+const LOGO="data:image/png;base64,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";
+const CURRENCIES=["USD","EUR","GBP","SEK","NOK","DKK","CHF","CAD","AED","SGD"];
+const COUNTRIES=[["Austria","eu"],["Belgium","eu"],["Bulgaria","eu"],["Croatia","eu"],["Cyprus","eu"],["Czechia","eu"],["Denmark","eu"],["Estonia","eu"],["Finland","eu"],["France","eu"],["Germany","eu"],["Greece","eu"],["Hungary","eu"],["Ireland","eu"],["Italy","eu"],["Latvia","eu"],["Lithuania","eu"],["Luxembourg","eu"],["Malta","eu"],["Netherlands","eu"],["Poland","eu"],["Portugal","eu"],["Romania","eu"],["Slovakia","eu"],["Slovenia","eu"],["Spain","eu"],["Sweden","eu"],["Norway (OSL)","ci"],["United Kingdom","ci"],["Switzerland","ci"],["Iceland","ci"],["Turkey","ci"],["Serbia","ci"],["United States","usa"],["Algeria","ci"],["Angola","ci"],["Egypt","ci"],["Ethiopia","ci"],["Ghana","ci"],["Kenya","ci"],["Morocco","ci"],["Nigeria","ci"],["Rwanda","ci"],["Senegal","ci"],["South Africa","ci"],["Tanzania","ci"],["Tunisia","ci"],["Uganda","ci"],["Zambia","ci"],["Brazil","br"],["Mexico","ci"],["United Arab Emirates","ci"],["Other non-EU country","ci"]];
+const AIRPORTS={"Norway (OSL)":"Oslo Gardermoen (OSL)","United Kingdom":"London Heathrow (LHR)","Switzerland":"Zürich (ZRH)","Iceland":"Keflavík (KEF)","Turkey":"Istanbul (IST)","Serbia":"Belgrade (BEG)","Algeria":"Algiers (ALG)","Angola":"Luanda (LAD)","Egypt":"Cairo (CAI)","Ethiopia":"Addis Ababa (ADD)","Ghana":"Accra (ACC)","Kenya":"Nairobi (NBO)","Morocco":"Casablanca (CMN)","Nigeria":"Lagos (LOS)","Rwanda":"Kigali (KGL)","Senegal":"Dakar (DSS)","South Africa":"Johannesburg (JNB)","Tanzania":"Dar es Salaam (DAR)","Tunisia":"Tunis (TUN)","Uganda":"Entebbe (EBB)","Zambia":"Lusaka (LUN)","Brazil":"São Paulo–Guarulhos (GRU)","Mexico":"Mexico City (MEX)","United Arab Emirates":"Dubai (DXB)"};
+const US_STATE_AIRPORT={FL:"Miami (MIA)",CA:"Los Angeles (LAX)",TX:"Dallas–Fort Worth (DFW)",NY:"New York (JFK)",NJ:"New York (EWR)",GA:"Atlanta (ATL)",IL:"Chicago (ORD)",WA:"Seattle (SEA)",AZ:"Phoenix (PHX)",CO:"Denver (DEN)",MA:"Boston (BOS)",OH:"Cincinnati (CVG)",NC:"Charlotte (CLT)",CT:"New York (JFK)"};
+const SEED_PARTS={
+  "70268":{mfr:"Eaton Aerospace (Eaton Corporation)",origin:"United States",city:"Los Angeles, CA, USA",hs:"8807.30",note:"Pneumatic pressure regulator / relief valve — Fokker F27 Mk050"},
+  "PS870A2SKIT":{mfr:"PRC-DeSoto International (PPG Aerospace)",origin:"United States",city:"Sylmar, CA, USA",hs:"3214.10",note:"Polysulfide aircraft sealant (MIL-PRF-81733) — DG/hazmat"}
+};
+
+const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+let SIGNATURE=LS.get('amapolaSig')||'';
+function sigTag(h){return SIGNATURE?'<img src="'+SIGNATURE+'" alt="signature" style="max-height:'+h+'px;max-width:210px;display:block;margin-bottom:2px">':'';}
+const $=id=>document.getElementById(id);
+const esc=s=>(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const nl2=s=>esc(s).replace(/\n/g,"<br>");
+const cur=()=>$('currency').value||"USD";
+const fmt=n=>(isFinite(n)?n:0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const money=n=>cur()+" "+fmt(n);
+function fmtDate(v){if(!v)return "";const d=new Date(v+"T00:00:00");if(isNaN(d))return v;return ("0"+d.getDate()).slice(-2)+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+d.getFullYear();}
+function num(id){return parseFloat($(id).value)||0;}
+function byName(){return ($('byName')&&$('byName').value.trim())||'';}
+function byTitle(){return ($('byTitle')&&$('byTitle').value.trim())||'';}
+function declName(){return ($('usDeclName').value.trim())||byName();}
+function addMonths(v,n){if(!v)return '';const d=new Date(v+'T00:00:00');if(isNaN(d))return '';d.setMonth(d.getMonth()+n);return d.toISOString().slice(0,10);}
+// auto-fill the "exported on or about" date with the sending (invoice) date, unless already set
+function syncDates(){if($('usExportDate')&&!$('usExportDate').dataset.touched&&$('invDate').value)$('usExportDate').value=$('invDate').value;}
+
+function loadLib(){try{return JSON.parse(LS.get('amapolaParts')||'{}');}catch(e){return {};}}
+function saveLib(lib){LS.set('amapolaParts',JSON.stringify(lib));}
+function libLookup(pn){const lib=loadLib();const k=(pn||'').toUpperCase().trim();return lib[k]||SEED_PARTS[k]||null;}
+
+function addRow(d){
+  d=d||{};
+  const tr=document.createElement('tr');
+  tr.innerHTML='<td><input class="pn"></td><td><input class="sn"></td><td><input class="bn"></td><td><input class="desc"></td><td><input class="hs" placeholder="8807.30"></td><td><input class="origin" placeholder="—"></td><td class="num"><input class="qty"></td><td class="num"><input class="val"></td><td><button class="btn ghost sm del">✕</button></td>';
+  tr.querySelector('.pn').value=d.pn||''; tr.querySelector('.sn').value=d.sn||''; tr.querySelector('.bn').value=d.bn||'';
+  tr.querySelector('.desc').value=d.desc||''; tr.querySelector('.hs').value=d.hs||''; tr.querySelector('.origin').value=d.origin||''; tr.querySelector('.qty').value=d.qty||''; tr.querySelector('.val').value=d.val||'';
+  tr.dataset.mfr=d.mfr||''; tr.dataset.city=d.city||'';
+  tr.querySelector('.del').onclick=()=>{tr.remove();render();};
+  tr.querySelectorAll('input').forEach(i=>i.addEventListener('input',()=>{ if(i.classList.contains('pn'))autoFromLib(tr); render();}));
+  $('itemBody').appendChild(tr);
+  return tr;
+}
+function autoFromLib(tr){
+  const hit=libLookup(tr.querySelector('.pn').value);
+  if(hit){
+    if(!tr.querySelector('.origin').value)tr.querySelector('.origin').value=hit.origin||'';
+    if(!tr.querySelector('.hs').value)tr.querySelector('.hs').value=hit.hs||'';
+    tr.dataset.mfr=hit.mfr||tr.dataset.mfr; tr.dataset.city=hit.city||tr.dataset.city;
+    if(region()==='usa'){if(!$('usMfr').value)$('usMfr').value=hit.mfr||'';if(!$('usMfrCity').value)$('usMfrCity').value=hit.city||'';}
+  }
+}
+function clearEmptyRows(){[...$('itemBody').querySelectorAll('tr')].forEach(tr=>{if(!tr.querySelector('.pn').value.trim()&&!tr.querySelector('.sn').value.trim()&&!tr.querySelector('.bn').value.trim()&&!tr.querySelector('.val').value.trim())tr.remove();});}
+function copyValueToAll(){const vals=[...$('itemBody').querySelectorAll('.val')];const f=vals.map(v=>v.value.trim()).find(v=>v!=='');if(f===undefined)return;vals.forEach(v=>v.value=f);render();}
+function getItems(){
+  return [...$('itemBody').querySelectorAll('tr')].map(tr=>({
+    pn:tr.querySelector('.pn').value.trim(),sn:tr.querySelector('.sn').value.trim(),bn:tr.querySelector('.bn').value.trim(),
+    desc:tr.querySelector('.desc').value.trim(),hs:tr.querySelector('.hs').value.trim(),origin:tr.querySelector('.origin').value.trim(),
+    qty:parseFloat(tr.querySelector('.qty').value)||1,val:parseFloat(tr.querySelector('.val').value)||0,
+    mfr:tr.dataset.mfr||'',city:tr.dataset.city||''
+  })).filter(i=>i.pn||i.sn||i.bn||i.desc||i.val);
+}
+
+function initCountries(){const s=$('country');const blank=document.createElement('option');blank.value='';blank.textContent='— select / from document —';s.appendChild(blank);COUNTRIES.forEach(([n,r])=>{const o=document.createElement('option');o.value=n;o.dataset.region=r;o.textContent=n;s.appendChild(o);});s.value='';}
+function region(){const o=$('country').selectedOptions[0];return o&&o.dataset.region?o.dataset.region:'';}
+function matchCountry(t){t=(t||'').toUpperCase().trim();const m={'USA':'United States','US':'United States','UNITED STATES':'United States','UK':'United Kingdom','UNITED KINGDOM':'United Kingdom','NORWAY':'Norway (OSL)'};if(m[t])return m[t];const o=[...$('country').options].find(x=>x.value&&(x.value.toUpperCase()===t||x.value.toUpperCase().replace(/ \(OSL\)/,'')===t));return o?o.value:null;}
+
+function destAirport(){
+  const c=$('country').value;
+  if(c==='United States'){const up=$('toAddress').value.toUpperCase();const m=up.match(/\b([A-Z]{2})\s+\d{5}/)||up.match(/,\s*([A-Z]{2})\b/);const st=m?m[1]:'';return US_STATE_AIRPORT[st]||'';}
+  return AIRPORTS[c]||'';
+}
+function applyAirport(){
+  const a=destAirport();
+  if(a){$('destAirport').value=a; if(region()==='usa'){if(!$('usEntryPort').value)$('usEntryPort').value=a; if(!$('usPort').value)$('usPort').value=a;}}
+}
+
+function smartFill(){
+  let known=0,unknown=[];
+  [...$('itemBody').querySelectorAll('tr')].forEach(tr=>{const pn=tr.querySelector('.pn').value.trim();if(!pn)return;const hit=libLookup(pn);if(hit){if(!tr.querySelector('.origin').value)tr.querySelector('.origin').value=hit.origin||'';if(!tr.querySelector('.hs').value)tr.querySelector('.hs').value=hit.hs||'';tr.dataset.mfr=hit.mfr||'';tr.dataset.city=hit.city||'';known++;if(region()==='usa'){if(!$('usMfr').value)$('usMfr').value=hit.mfr||'';if(!$('usMfrCity').value)$('usMfrCity').value=hit.city||'';}}else unknown.push(pn);});
+  applyAirport();
+  render();
+  let msg='';
+  if(known)msg='✓ Manufacturer/origin filled for '+known+' part(s).';
+  if($('destAirport').value)msg+=' Handling airport: '+esc($('destAirport').value)+'.';
+  if(unknown.length)msg+=' <span class="verifyflag">Not in library: '+esc(unknown.join(', '))+' — type the manufacturer/origin once, then “Save current parts”.</span>';
+  $('fillStatus').innerHTML=msg||'Nothing to fill yet.';
+}
+
+if(window.pdfjsLib){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}
+async function parsePdf(file){
+  const st=$('parseStatus'); st.className='hint'; st.textContent='Reading '+file.name+' …';
+  try{
+    if(!window.pdfjsLib) throw new Error('PDF engine not loaded — check your internet connection');
+    const buf=await file.arrayBuffer();
+    const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+    let allLines=[],p1items=[];
+    for(let pno=1;pno<=pdf.numPages;pno++){
+      const page=await pdf.getPage(pno);const tc=await page.getTextContent();
+      const its=tc.items.map(it=>({x:Math.round(it.transform[4]),y:Math.round(it.transform[5]),s:it.str})).filter(o=>o.s.trim());
+      if(pno===1)p1items=its;
+      const byY={};its.forEach(o=>{(byY[o.y]=byY[o.y]||[]).push(o);});
+      Object.keys(byY).map(Number).sort((a,b)=>b-a).forEach(y=>{const l=byY[y].sort((a,b)=>a.x-b.x).map(o=>o.s).join(' ').replace(/\s+/g,' ').trim();if(l)allLines.push(l);});
+    }
+    const full=allLines.join('\n');
+    const grab=re=>{const m=full.match(re);return m?m[1].trim():'';};
+    let ordNo=grab(/Order\s*No:?\s*((?:RO|SO|SM)\s*[0-9A-Z\/\-]+)/i)||grab(/\b((?:RO|SO|SM)\s*\d{4,})\b/i);
+    if(ordNo){const ref=ordNo.replace(/\s+/g,' ').trim();$('refType').value=(ref.match(/^(RO|SO|SM)/i)||['','RO'])[1].toUpperCase();$('refNo').value=$('refNo').value&&$('refNo').value.split(/\s*[+]\s*/).indexOf(ref)<0?$('refNo').value+' + '+ref:ref;}
+    // PRIMARY: the item-table row — same layout in every order: "1 70268 41 VALVE,REGULATING AND RELIEF 1 EA"
+    const clean=s=>(s||'').replace(/\s*\((?:as per record|unknown|n\/a)\)/ig,'').replace(/\s+/g,' ').trim();
+    const itemRe=/^(\d{1,3})\s+([A-Za-z0-9][A-Za-z0-9\.\-\/]*)\s+(\S+)\s+(.+?)\s+(\d+(?:[.,]\d+)?)\s+(EA|PCS?|SET|KIT|U|EU|NO|LOT|UN)\b/i;
+    let parsed=[];
+    allLines.forEach(l=>{const m=l.match(itemRe);if(m)parsed.push({pn:clean(m[2]),sn:clean(m[3]),bn:'',desc:clean(m[4]),qty:m[5].replace(',','.')});});
+    // FALLBACK: labelled order-note fields (only if no table row matched)
+    if(!parsed.length){
+      const pns=[...full.matchAll(/Part\s*Number\s*\(P\/N\):\s*([^\n]+)/gi)].map(m=>clean(m[1]));
+      const sns=[...full.matchAll(/Serial\s*Number\s*\(S\/N\):\s*([^\n]+)/gi)].map(m=>clean(m[1]));
+      const dss=[...full.matchAll(/(?:^|\n)\s*Description:\s*([^\n]+)/gi)].map(m=>clean(m[1]));
+      pns.forEach((pn,i)=>parsed.push({pn,sn:sns[i]||'',bn:'',desc:dss[i]||'',qty:'1'}));
+    }
+    // enrich a single item's description with the richer labelled wording, and capture a batch number if stated
+    if(parsed.length===1){
+      const ld=clean(grab(/(?:^|\n)\s*Description:\s*([^\n]+)/i));
+      if(ld && ld.length>parsed[0].desc.length) parsed[0].desc=ld;
+      const bn=clean(grab(/Batch\s*(?:Number)?\s*(?:\(B\/N\))?:\s*([^\n]+)/i));
+      if(bn && !/unknown/i.test(bn)) parsed[0].bn=bn;
+    }
+    if(parsed.length){clearEmptyRows();parsed.forEach(p=>{const tr=addRow(p);autoFromLib(tr);});}
+    const firstOrder=!$('toCompany').value.trim();
+    const sentY=(p1items.find(o=>/Sent To/i.test(o.s))||{}).y;
+    const itemHdrY=(p1items.find(o=>/^Item$/i.test(o.s)||/Partnumber/i.test(o.s))||{}).y;
+    if(firstOrder&&sentY&&itemHdrY){
+      const col=p1items.filter(o=>o.x<285&&o.y<sentY&&o.y>itemHdrY);const rowsY={};col.forEach(o=>{(rowsY[o.y]=rowsY[o.y]||[]).push(o);});
+      const block=Object.keys(rowsY).map(Number).sort((a,b)=>b-a).map(y=>rowsY[y].sort((a,b)=>a.x-b.x).map(o=>o.s).join(' ').replace(/\s+/g,' ').trim()).filter(s=>s&&!/Sent To|Repair Shop/i.test(s));
+      if(block.length){$('toCompany').value=block[0];$('toAddress').value=block.slice(1).join('\n');const cc=matchCountry(block[block.length-1]);if(cc){$('country').value=cc;updateCountryUI();}}
+    }
+    if(!$('reason').value)$('reason').value='Aircraft parts for repair and return';
+    if(region()==='usa'){const ra=grab(/Repair Action:?\s*([^\n]+)/i);$('usReason').value=/overhaul/i.test(ra)?'For Repair / Overhaul':'For Repair';}
+    smartFill();
+    render();
+    const n=parsed.length;
+    if(n){st.className='hint ok';st.textContent='✓ Loaded '+($('refNo').value||file.name)+' — '+n+' item'+(n!==1?'s':'')+', destination '+($('country').value||'?')+'. Now enter the unit price (and box size/weight).';}
+    else{st.className='hint err';st.textContent='Loaded '+($('refNo').value||file.name)+', but could not read line items from this layout — type P/N, S/N, B/N, description manually.';}
+  }catch(e){st.className='hint err';st.textContent='Could not read this PDF ('+esc(e.message)+'). Fill the form manually.';}
+}
+// handle one or many files, one after another (each appends its items)
+async function parseFiles(list){
+  const files=[...list].filter(f=>f.type==='application/pdf'||/\.pdf$/i.test(f.name));
+  if(!files.length)return;
+  $('parseStatus').className='hint';
+  for(let i=0;i<files.length;i++){ $('parseStatus').textContent='Reading file '+(i+1)+' of '+files.length+' …'; await parsePdf(files[i]); }
+  if(files.length>1){ const items=getItems(); $('parseStatus').className='hint ok'; $('parseStatus').textContent='✓ Combined '+files.length+' orders — '+items.length+' item(s) total ('+($('refNo').value||'')+'). Now enter the unit prices.'; }
+}
+
+function snbn(i){return [i.sn?('S/N '+esc(i.sn)):'',i.bn?('B/N '+esc(i.bn)):''].filter(Boolean).join(' · ');}
+function totals(items){const sub=items.reduce((s,i)=>s+i.qty*i.val,0);const tax=sub*(num('taxrate')/100);return {sub,tax,grand:sub+tax+num('freight')+num('insurance')};}
+function commercialInvoice(items){
+  const t=totals(items);
+  const rows=items.map(i=>`<tr><td>${esc(i.pn)}</td><td>${esc(i.sn)}</td><td>${esc(i.bn)}</td><td>${esc(i.desc)}</td><td>${esc(i.hs)}</td><td>${esc(i.origin)}</td><td class="r">${i.qty}</td><td class="r">${fmt(i.val)}</td><td class="r">${fmt(i.qty*i.val)}</td></tr>`).join("");
+  const ship=[];if($('boxes').value)ship.push(esc($('boxes').value)+" box(es)");if($('boxDim').value)ship.push("Dim "+esc($('boxDim').value)+" cm");if($('netWeight').value)ship.push("Net "+esc($('netWeight').value)+" kg");if($('weight').value)ship.push("Gross "+esc($('weight').value)+" kg");if($('carrier').value)ship.push("Carrier: "+esc($('carrier').value));if($('destAirport').value)ship.push("Airport: "+esc($('destAirport').value));if($('pkgType').value)ship.push("Pkg: "+esc($('pkgType').value)+($('pkgTreat').value?(" / "+$('pkgTreat').value):""));if($('handling').value)ship.push("<b>"+esc($('handling').value)+"</b>");
+  const retDate=addMonths($('invDate').value,4);
+  const t1=$('refType').value,r1=$('refNo').value,refDisp=esc(!r1?'':(t1&&r1.toUpperCase().indexOf(t1)!==0?t1+' '+r1:r1));
+  return `<div class="doc" data-doc="Commercial Invoice">
+    <div class="docdate">${fmtDate($('invDate').value)}</div>
+    <img class="dlogo" src="${LOGO}">
+    <h2 class="title">CUSTOMS INVOICE</h2>
+    <table class="fromto"><tr>
+      <td class="blk"><b>From / Exporter</b><div class="l">${esc(SENDER.company)}
+${esc(SENDER.addr)}
+EORI: ${esc(SENDER.eori)}</div></td>
+      <td class="blk"><b>Ship to / Consignee</b><div class="l">${esc($('toCompany').value)||"&mdash;"}
+${nl2($('toAddress').value)}${$('toContact').value?("\nContact: "+esc($('toContact').value)):""}${$('toEmail').value?("\n"+esc($('toEmail').value)):""}</div></td>
+      <td class="blk" style="padding-right:0"><b>Details</b><div class="l">${refDisp||"&mdash;"}${$('custId').value?("\nCustomer ID: "+esc($('custId').value)):""}
+Destination: ${esc($('country').value)}
+Currency: ${cur()}</div></td>
+    </tr></table>
+    ${ship.length?`<div class="shipdetails"><b>Shipment:</b> ${ship.join(" &nbsp;·&nbsp; ")}</div>`:""}
+    <div class="meta">${esc($('reason').value)||"Aircraft parts for repair and return"} &nbsp;·&nbsp; Customs Tariff ${esc(SENDER.tariff)}${retDate?(" &nbsp;·&nbsp; Temporary export for repair — expected return by "+fmtDate(retDate)):""}</div>
+    <table class="citab"><thead><tr><th>P/N</th><th>S/N</th><th>B/N</th><th>Description</th><th>HS code</th><th>Origin</th><th class="r">Qty</th><th class="r">Unit (${cur()})</th><th class="r">Amount</th></tr></thead><tbody>${rows}</tbody></table>
+    <table class="totbox">
+      <tr><td>Subtotal</td><td class="r">${money(t.sub)}</td></tr>
+      ${num('freight')?`<tr><td>Transport${$('carrier').value?(" ("+esc($('carrier').value)+")"):""}</td><td class="r">${money(num('freight'))}</td></tr>`:""}
+      ${num('insurance')?`<tr><td>Insurance</td><td class="r">${money(num('insurance'))}</td></tr>`:""}
+      ${num('taxrate')?`<tr><td>Tax (${num('taxrate')}%)</td><td class="r">${money(t.tax)}</td></tr>`:""}
+      <tr class="grand"><td>TOTAL</td><td class="r">${money(t.grand)}</td></tr>
+    </table>
+    <div class="reason">Reason for export: ${esc($('reason').value)||"Aircraft parts for repair and return"}</div>
+    <div class="sigblock">
+      <div class="cert">I certify that the information given above is true and correct.</div>
+      <div class="fld">
+        <div class="v" style="min-height:46px">${sigTag(46)}</div>
+        <div class="cap">${byName()?("<b>"+esc(byName())+"</b>"):"Authorised signature"}${byTitle()?(" &mdash; "+esc(byTitle())):""}<br>${esc(SENDER.company)} &nbsp;·&nbsp; Date: ${fmtDate($('invDate').value)}</div>
+      </div>
+    </div>
+  </div>`;
+}
+function cbp3311(items){
+  const t=totals(items);
+  const arts=items.map(i=>`${esc(i.pn)}${snbn(i)?(" / "+snbn(i)):""} — ${esc(i.desc)} (Qty ${i.qty})`).join("<br>")||"&mdash;";
+  const chk=on=>on?"☒":"☐";
+  return `<div class="doc" data-doc="CBP 3311">
+    <div style="text-align:center"><div style="font-size:10.5px">DEPARTMENT OF HOMELAND SECURITY · U.S. Customs and Border Protection</div>
+    <div style="font-weight:700;font-size:15px;margin-top:2px">DECLARATION FOR FREE ENTRY OF RETURNED AMERICAN PRODUCTS</div>
+    <div style="font-size:10px;color:#444">19 CFR 7.8, 10.1, 10.5, 10.66, 10.67, 12.41, 123.4, 143.23, 145.35 · CBP Form 3311</div></div>
+    <table class="cbp">
+      <tr><td><div class="lab">1. Port</div><div class="v">${esc($('usEntryPort').value)||"&nbsp;"}</div></td><td><div class="lab">2. Date</div><div class="v">${fmtDate($('invDate').value)}</div></td><td><div class="lab">3. Entry No. &amp; Date</div><div class="v">&nbsp;</div></td></tr>
+      <tr><td colspan="2"><div class="lab">4. Name of Manufacturer</div><div class="v">${esc($('usMfr').value)||'<span class="verifyflag">[verify]</span>'}</div></td><td><div class="lab">5. City &amp; State of Manufacture</div><div class="v">${esc($('usMfrCity').value)||'<span class="verifyflag">[verify]</span>'}</div></td></tr>
+      <tr><td><div class="lab">6. Reason for Return</div><div class="v">${esc($('usReason').value)||"For Repair"}</div></td>
+        <td colspan="2"><div class="lab">7. U.S. Drawback Previously</div><div class="v chk">${chk($('usDrawback').value=='CLAIMED')} Claimed &nbsp; ${chk($('usDrawback').value=='UNCLAIMED')} Unclaimed</div>
+        <div class="lab" style="margin-top:3px">8. Previously imported under HTSUS 9813.00.05?</div><div class="v chk">${chk($('usHts').value=='YES')} Yes &nbsp; ${chk($('usHts').value=='NO')} No</div></td></tr>
+      <tr><td colspan="2"><div class="lab">9. Marks, Numbers &amp; Description of Articles Returned</div><div class="v">${arts}</div></td><td><div class="lab">10. Value</div><div class="v">${money(t.sub)}</div></td></tr>
+      <tr><td colspan="3" style="font-size:10px;line-height:1.4">11. I declare that the information given above is true and correct to the best of my knowledge and belief; that the articles described above are the growth, production, and manufacture of the United States and are returned without having been advanced in value or improved in condition by any process of manufacture or other means; that no drawback, bounty, or allowance has been paid or admitted thereon, or on any part thereof.</td></tr>
+      <tr><td colspan="2"><div class="lab">12. Name of Declarant</div><div class="v">${esc(declName())||"&nbsp;"}</div></td><td><div class="lab">13. Title of Declarant</div><div class="v">${esc(byTitle())||"&nbsp;"}</div></td></tr>
+      <tr><td colspan="2"><div class="lab">14. Name of Corporation or Partnership</div><div class="v">${esc(SENDER.company)}</div></td><td><div class="lab">15. Signature</div><div class="v">${sigTag(34)||"&nbsp;"}</div></td></tr>
+      <tr><td colspan="3"><div class="lab">16. Signature of Authorizing CBP Officer</div><div style="height:16px"></div></td></tr>
+    </table></div>`;
+}
+function foreignShipper(items){
+  const t=totals(items);
+  const rows=items.map(i=>`<tr><td>${esc(i.pn)}</td><td>${esc(i.sn||i.bn)}</td><td class="r">${i.qty}</td><td>${esc(i.desc)}</td><td class="r">${fmt(i.qty*i.val)}</td></tr>`).join("");
+  const ed=$('usExportDate').value;
+  return `<div class="doc fs" data-doc="Foreign Shipper Declaration">
+    <h2 class="title" style="font-size:17px;text-align:center;text-decoration:underline">Foreign Shipper's Declaration of U.S. Goods Returned</h2>
+    <p class="body">I, <span class="blank">${esc(declName())||"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"}</span>, declare that to the best of my knowledge and belief that the articles herein specified were exported from the United States, from the port of <span class="blank">${esc($('usPort').value)||"&nbsp;&nbsp;&nbsp;&nbsp;"}</span> on or about <span class="blank">${ed?fmtDate(ed):"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;, 20___"}</span>, and that they are returned without having been advanced in value or improved in condition by any process of manufacturing or other means.</p>
+    <table class="citab"><thead><tr><th>Marks</th><th>Number</th><th class="r">Quantity</th><th>Description</th><th class="r">Value (USD)</th></tr></thead><tbody>${rows}</tbody><tr><td colspan="4" class="r"><b>Total</b></td><td class="r"><b>${fmt(t.sub)}</b></td></tr></table>
+    <div class="sigblock" style="margin-top:26px">
+      <div class="fld"><div class="v">${fmtDate($('invDate').value)}</div><div class="cap">(Date)</div></div>
+      <div class="fld"><div class="v">${esc(SENDER.hangar)}</div><div class="cap">(Address)</div></div>
+      <div class="fld"><div class="v" style="min-height:44px">${sigTag(44)}</div><div class="cap">${byName()?esc(byName()):"&nbsp;"} &nbsp; (Signature)</div></div>
+      <div class="fld"><div class="v">${esc(byTitle())||"&nbsp;"}</div><div class="cap">(Capacity)</div></div>
+    </div>
+    <div class="note">Reference: 19 CFR 10.1(a)(1)</div></div>`;
+}
+function refDisp(){const t1=$('refType').value,r1=$('refNo').value;return esc(!r1?'':(t1&&r1.toUpperCase().indexOf(t1)!==0?t1+' '+r1:r1));}
+function packingList(items){
+  const rows=items.map((i,idx)=>`<tr><td class="r">${idx+1}</td><td>${esc(i.pn)}</td><td>${esc(i.sn)}</td><td>${esc(i.bn)}</td><td>${esc(i.desc)}</td><td>${esc(i.hs)}</td><td>${esc(i.origin)}</td><td class="r">${i.qty}</td></tr>`).join("");
+  return `<div class="doc" data-doc="Packing List">
+    <div class="docdate">${fmtDate($('invDate').value)}</div>
+    <img class="dlogo" src="${LOGO}">
+    <h2 class="title">PACKING LIST</h2>
+    <table class="fromto"><tr>
+      <td class="blk"><b>From / Shipper</b><div class="l">${esc(SENDER.company)}\n${esc(SENDER.addr)}\nEORI: ${esc(SENDER.eori)}</div></td>
+      <td class="blk"><b>Ship to / Consignee</b><div class="l">${esc($('toCompany').value)||"&mdash;"}\n${nl2($('toAddress').value)}</div></td>
+      <td class="blk" style="padding-right:0"><b>Details</b><div class="l">${refDisp()||"&mdash;"}\nDestination: ${esc($('country').value)}${$('carrier').value?("\nCarrier: "+esc($('carrier').value)):""}</div></td>
+    </tr></table>
+    <table class="citab"><thead><tr><th>#</th><th>P/N</th><th>S/N</th><th>B/N</th><th>Description</th><th>HS code</th><th>Origin</th><th class="r">Qty</th></tr></thead><tbody>${rows}</tbody></table>
+    <table class="totbox">
+      <tr><td>Total packages</td><td class="r">${esc($('boxes').value)||'1'}</td></tr>
+      <tr><td>Dimensions (cm)</td><td class="r">${esc($('boxDim').value)||'&mdash;'}</td></tr>
+      <tr><td>Net weight</td><td class="r">${$('netWeight').value?esc($('netWeight').value)+' kg':'&mdash;'}</td></tr>
+      <tr class="grand"><td>Gross weight</td><td class="r">${$('weight').value?esc($('weight').value)+' kg':'&mdash;'}</td></tr>
+    </table>
+    ${$('pkgType').value?`<div class="meta">Packaging: ${esc($('pkgType').value)}${$('pkgTreat').value==='HT'?' — Heat treated (HT), ISPM 15':($('pkgTreat').value==='MB'?' — Fumigated (MB), ISPM 15':'')}</div>`:''}
+    <div class="sigblock"><div class="fld"><div class="v" style="min-height:46px">${sigTag(46)}</div><div class="cap">${byName()?("<b>"+esc(byName())+"</b>"):"Authorised signature"}${byTitle()?(" &mdash; "+esc(byTitle())):""}<br>${esc(SENDER.company)} &nbsp;·&nbsp; Date: ${fmtDate($('invDate').value)}</div></div></div>
+  </div>`;
+}
+function parseDims(s){const m=(s||'').match(/(\d+(?:[.,]\d+)?)\s*[x*×]\s*(\d+(?:[.,]\d+)?)\s*[x*×]\s*(\d+(?:[.,]\d+)?)/i);return m?{l:m[1].replace(',','.'),w:m[2].replace(',','.'),h:m[3].replace(',','.')}:null;}
+function boxSVG(l,w,h,isPallet){
+  const feet=isPallet?'<rect x="60" y="200" width="170" height="12" fill="#c9d6e0" stroke="#33485a" stroke-width="1"/><rect x="60" y="200" width="14" height="12" fill="#aebecb" stroke="#33485a" stroke-width="1"/><rect x="148" y="200" width="14" height="12" fill="#aebecb" stroke="#33485a" stroke-width="1"/><rect x="216" y="200" width="14" height="12" fill="#aebecb" stroke="#33485a" stroke-width="1"/>':'';
+  return `<svg viewBox="0 0 360 236" width="100%" style="max-width:360px;border:1px solid #ddd;border-radius:6px;background:#fcfcfd">
+    <polygon points="60,200 60,92 230,92 230,200" fill="#eef3f7" stroke="#33485a" stroke-width="1.6"/>
+    <polygon points="60,92 118,57 288,57 230,92" fill="#dde8f0" stroke="#33485a" stroke-width="1.6"/>
+    <polygon points="230,92 288,57 288,165 230,200" fill="#e6eef4" stroke="#33485a" stroke-width="1.6"/>
+    ${feet}
+    <rect x="118" y="124" width="56" height="26" rx="3" fill="#fff" stroke="#b00" stroke-width="1.3"/>
+    <text x="146" y="141" font-size="9" fill="#b00" text-anchor="middle" font-weight="bold">IPPC</text>
+    <line x1="60" y1="220" x2="230" y2="220" stroke="#888" stroke-width="1"/>
+    <text x="145" y="232" font-size="12" text-anchor="middle" fill="#222">L = ${l} cm</text>
+    <line x1="298" y1="92" x2="298" y2="200" stroke="#888" stroke-width="1"/>
+    <text x="304" y="150" font-size="12" fill="#222">H = ${h}</text>
+    <line x1="122" y1="48" x2="292" y2="48" stroke="#888" stroke-width="1"/>
+    <text x="207" y="44" font-size="12" text-anchor="middle" fill="#222">W = ${w} cm</text>
+  </svg>`;
+}
+function ippcSVG(cc,reg,tcode){
+  return `<svg viewBox="0 0 220 92" width="100%" style="max-width:220px">
+    <rect x="4" y="6" width="212" height="80" rx="7" fill="#fff" stroke="#222" stroke-width="1.7"/>
+    <line x1="84" y1="6" x2="84" y2="86" stroke="#222" stroke-width="1.3"/>
+    <g stroke="#222" stroke-width="1.4" fill="none">
+      <path d="M44 74 C44 54 44 42 44 28"/>
+      <path d="M44 42 C35 38 31 32 31 25"/><path d="M44 42 C53 38 57 32 57 25"/>
+      <path d="M44 54 C35 50 31 44 31 37"/><path d="M44 54 C53 50 57 44 57 37"/>
+      <circle cx="44" cy="25" r="3" fill="#222"/>
+    </g>
+    <text x="44" y="82" font-size="8" text-anchor="middle" fill="#222">IPPC</text>
+    <text x="150" y="40" font-size="15" text-anchor="middle" fill="#222" font-weight="bold">${cc} – ${reg}</text>
+    <text x="150" y="68" font-size="15" text-anchor="middle" fill="#222" font-weight="bold">${tcode}</text>
+  </svg>`;
+}
+function woodDecl(){
+  const treat=$('pkgTreat').value; if(!treat) return '';
+  const isHT=treat==='HT';
+  const pkg=$('pkgType').value||'Wooden packaging';
+  const isPallet=/pallet/i.test(pkg);
+  const units=esc($('pkgUnits').value)||'1';
+  const cc=(esc($('ippcCountry').value)||'CC').toUpperCase();
+  const reg=esc($('ippcReg').value)||'0000';
+  const tcode=isHT?'HT':'MB';
+  const tdate=$('pkgDate').value?fmtDate($('pkgDate').value):fmtDate($('invDate').value);
+  const dims=parseDims($('boxDim').value);
+  const gw=$('weight').value?esc($('weight').value)+' kg':'&mdash;';
+  const title='WOOD PACKAGING MATERIAL — ISPM 15 '+(isHT?'HEAT TREATMENT':'FUMIGATION')+' CERTIFICATE';
+  const method=isHT?'heat treated (HT) to a minimum wood core temperature of 56&nbsp;&deg;C for at least 30 minutes':'fumigated with methyl bromide (MB) in accordance with the prescribed dosage and exposure';
+  const box=boxSVG(dims?dims.l:'L',dims?dims.w:'W',dims?dims.h:'H',isPallet);
+  const mark=ippcSVG(cc,reg,tcode);
+  return `<div class="doc" data-doc="ISPM15 Certificate">
+    <h2 class="title" style="font-size:16px;text-align:center;margin-top:0">${title}</h2>
+    <p style="font-size:12px;line-height:1.6">This is to certify that the wood packaging material described and illustrated below conforms to the <b>International Standard for Phytosanitary Measures No. 15 (ISPM 15 / IPPC)</b>. The wood is bark-free and has been <b>${method}</b>, and the packaging bears the official IPPC mark shown. The IPPC mark stamped on the wood packaging by the licensed treatment provider is the evidence of treatment.</p>
+    <table class="citab">
+      <tr><td style="width:40%"><b>Shipment reference</b></td><td>${refDisp()||'&mdash;'}</td></tr>
+      <tr><td><b>Destination country</b></td><td>${esc($('country').value)||'&mdash;'}</td></tr>
+      <tr><td><b>Packaging type</b></td><td>${esc(pkg)}</td></tr>
+      <tr><td><b>Outer dimensions (L &times; W &times; H)</b></td><td>${dims?(dims.l+' &times; '+dims.w+' &times; '+dims.h+' cm'):'&mdash; (enter box size)'}</td></tr>
+      <tr><td><b>Number of units</b></td><td>${units}</td></tr>
+      <tr><td><b>Gross weight</b></td><td>${gw}</td></tr>
+      <tr><td><b>Treatment method</b></td><td>${isHT?'Heat Treatment (HT)':'Methyl Bromide fumigation (MB)'} — ISPM 15</td></tr>
+      <tr><td><b>IPPC mark</b></td><td>${cc} &ndash; ${reg} &ndash; ${tcode}</td></tr>
+      <tr><td><b>Treatment / packing date</b></td><td>${tdate}</td></tr>
+    </table>
+    <table style="width:100%;border-collapse:collapse;margin-top:14px"><tr>
+      <td style="vertical-align:top;padding-right:18px"><div style="font-size:10px;text-transform:uppercase;color:#444;margin-bottom:4px">Packaging drawing</div>${box}</td>
+      <td style="vertical-align:top;width:236px"><div style="font-size:10px;text-transform:uppercase;color:#444;margin-bottom:4px">Official IPPC / ISPM 15 mark</div>${mark}<div style="font-size:10px;color:#666;margin-top:5px">The mark is applied on at least two opposite sides of each piece of wood packaging. Symbol shown is illustrative; the actual stamp on the packaging is the evidence.</div></td>
+    </tr></table>
+    <div class="sigblock" style="margin-top:26px"><div class="fld"><div class="v" style="min-height:44px">${sigTag(44)}</div><div class="cap">${byName()?("<b>"+esc(byName())+"</b>"):"Signature"}${byTitle()?(" &mdash; "+esc(byTitle())):""} &nbsp;·&nbsp; Date: ${tdate}</div></div></div>
+  </div>`;
+}
+function render(){
+  const items=getItems();const r=region();const banner=$('banner'),prev=$('preview');
+  $('usaBox').classList.toggle('show',r==='usa');
+  if(items.length===0 && !$('toCompany').value.trim() && !$('country').value){
+    banner.className='banner idle noprint';banner.innerHTML='Upload an order document to begin. Everything stays empty until you do.';
+    prev.innerHTML='<div class="placeholder"><div class="big">No document loaded</div>Click <b>“Upload SO / SM / RO PDF”</b> on the left.<br>P/N, S/N, B/N, description and ship-to come straight from your order; manufacturer and handling airport fill automatically.</div>';
+    return;
+  }
+  if(r==='eu'){banner.className='banner none noprint';banner.innerHTML='✓ <b>EU destination — no customs invoice required.</b> Ship with the AWB from your booking only.';prev.innerHTML='<div class="placeholder"><div class="big">No customs document required</div>'+esc($('country').value)+' is within the EU — only the Air Waybill (AWB) is needed.</div>';return;}
+  const wantPL=$('pkgList').checked||r==='br';
+  const wd=woodDecl();
+  let docs=[commercialInvoice(items)];
+  if(r==='usa'){docs.push(cbp3311(items));docs.push(foreignShipper(items));}
+  if(wantPL)docs.push(packingList(items));
+  if(wd)docs.push(wd);
+  prev.innerHTML=docs.join('');
+  const extra=(wantPL?' · Packing List':'')+(wd?' · ISPM 15 declaration':'');
+  if(!r){banner.className='banner idle noprint';banner.innerHTML='Select a destination country (or upload an order that includes it) to choose the right documents.';}
+  else if(r==='usa'){banner.className='banner docs noprint';banner.innerHTML='⚠ <b>USA:</b> Customs Invoice · CBP Form 3311 · Foreign Shipper’s Declaration'+extra+'.';}
+  else if(r==='br'){banner.className='banner docs noprint';banner.innerHTML='⚠ <b>BRAZIL — detailed customs.</b> Customs Invoice + Packing List'+(wd?' + ISPM 15 declaration':'')+'. Fill HS/NCM code, net &amp; gross weight, carrier &amp; transport value'+(wd?'':' — and add wood-packaging treatment if shipping on a pallet/crate')+'.';}
+  else{banner.className='banner docs noprint';banner.innerHTML='⚠ <b>Customs Invoice required</b> for '+esc($('country').value)+extra+'.';}
+}
+function updateCountryUI(){const r=region();$('usaBox').classList.toggle('show',r==='usa');if(r==='br')$('pkgList').checked=true;$('countryHint').textContent={'':'',eu:"EU — only the AWB is needed.",ci:"Customs Invoice required.",usa:"Customs Invoice + 2 US declarations required.",br:"Brazil — Customs Invoice + Packing List + ISPM 15 if wooden packaging."}[r];applyAirport();}
+function resetAll(){
+  $('itemBody').innerHTML='';addRow();
+  ['refNo','refType','toCompany','toAddress','toContact','toEmail','custId','reason','byName','byTitle','boxDim','weight','netWeight','boxes','carrier','destAirport','freight','insurance','taxrate','handling','ippcCountry','ippcReg','pkgUnits','usMfr','usMfrCity','usPort','usEntryPort','usReason','usDeclName'].forEach(id=>$(id).value='');
+  $('usExportDate').value='';$('country').value='';$('pkgType').value='';$('pkgTreat').value='';$('pkgDate').value='';$('pkgList').checked=false;
+  $('parseStatus').className='hint';$('parseStatus').textContent='All fields cleared. Upload an order to begin.';
+  delete $('usExportDate').dataset.touched;syncDates();
+  $('fillStatus').textContent='';updateCountryUI();render();
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  CURRENCIES.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;$('currency').appendChild(o);});
+  $('currency').value=LS.get('amapolaCur')||'USD';
+  initCountries();
+  $('invDate').value=new Date().toISOString().slice(0,10);
+  addRow();syncDates();
+  $('invDate').addEventListener('input',()=>{syncDates();render();});
+  $('usExportDate').addEventListener('input',function(){this.dataset.touched='1';});
+  const lib=loadLib();$('libStatus').textContent=Object.keys(lib).length?(Object.keys(lib).length+' part(s) added to library.'):'';
+  $('addRow').onclick=()=>addRow();
+  $('copyVal').onclick=copyValueToAll;
+  $('fillBtn').onclick=smartFill;
+  $('resetBtn').onclick=resetAll;
+  $('uploadBtn').onclick=()=>$('pdfFile').click();
+  $('pdfFile').onchange=e=>{if(e.target.files.length){parseFiles(e.target.files);e.target.value='';}};
+  const dz=$('dropZone');
+  ['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('drag');}));
+  ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('drag');}));
+  dz.addEventListener('drop',e=>{if(e.dataTransfer.files.length)parseFiles(e.dataTransfer.files);});
+  $('genBtn').onclick=render;
+  $('printBtn').onclick=()=>{render();setTimeout(()=>window.print(),60);};
+  $('country').onchange=()=>{updateCountryUI();render();};
+  $('currency').onchange=()=>{LS.set('amapolaCur',cur());render();};
+  ['refNo','invDate','toCompany','toAddress','toContact','toEmail','custId','reason','byName','byTitle','boxDim','weight','netWeight','boxes','carrier','destAirport','freight','insurance','taxrate','handling','ippcCountry','ippcReg','pkgUnits'].forEach(id=>$(id).addEventListener('input',render));
+  ['usMfr','usMfrCity','usPort','usExportDate','usEntryPort','usReason','usDrawback','usHts','usDeclName'].forEach(id=>$(id).addEventListener('input',render));
+  ['pkgType','pkgTreat','pkgDate','pkgList'].forEach(id=>$(id).addEventListener('change',render));
+  $('toAddress').addEventListener('input',applyAirport);
+  // ---- signature pad ----
+  (function(){
+    const cv=$('sigPad'); if(!cv) return;
+    const ctx=cv.getContext&&cv.getContext('2d');
+    function loadSig(src){if(!ctx){SIGNATURE=src;render();return;}const img=new Image();img.onload=function(){ctx.clearRect(0,0,cv.width,cv.height);const r=Math.min(cv.width/img.width,cv.height/img.height,1);const w=img.width*r,h=img.height*r;ctx.drawImage(img,(cv.width-w)/2,(cv.height-h)/2,w,h);SIGNATURE=cv.toDataURL('image/png');render();};img.src=src;}
+    if(ctx){
+      let drawing=false,dirty=false;
+      const pos=e=>{const r=cv.getBoundingClientRect();return [(e.clientX-r.left)*(cv.width/r.width),(e.clientY-r.top)*(cv.height/r.height)];};
+      cv.addEventListener('pointerdown',e=>{drawing=true;dirty=true;cv.setPointerCapture(e.pointerId);const p=pos(e);ctx.beginPath();ctx.moveTo(p[0],p[1]);});
+      cv.addEventListener('pointermove',e=>{if(!drawing)return;const p=pos(e);ctx.lineTo(p[0],p[1]);ctx.lineWidth=2.2;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#0b2a45';ctx.stroke();});
+      const end=()=>{if(drawing){drawing=false;if(dirty){SIGNATURE=cv.toDataURL('image/png');render();$('sigStatus').textContent='Signature captured — click Save to keep it for next time.';}}};
+      cv.addEventListener('pointerup',end);cv.addEventListener('pointerleave',end);
+      if(SIGNATURE)loadSig(SIGNATURE);
+    }
+    $('sigClear').onclick=()=>{if(ctx)ctx.clearRect(0,0,cv.width,cv.height);SIGNATURE='';LS.del('amapolaSig');$('sigStatus').textContent='Signature cleared.';render();};
+    $('sigUploadBtn').onclick=()=>$('sigFile').click();
+    $('sigFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{loadSig(rd.result);$('sigStatus').textContent='Signature image loaded — click Save to keep it.';};rd.readAsDataURL(f);e.target.value='';};
+    $('sigSave').onclick=()=>{if(!SIGNATURE){$('sigStatus').textContent='Draw or upload a signature first.';return;}LS.set('amapolaSig',SIGNATURE);$('sigStatus').textContent='✓ Signature saved in this browser.';};
+  })();
+  $('saveParts').onclick=()=>{const lib=loadLib();let n=0;getItems().forEach(i=>{if(i.pn){lib[i.pn.toUpperCase()]={mfr:i.mfr,origin:i.origin,city:i.city,hs:i.hs};n++;}});saveLib(lib);$('libStatus').textContent='Saved '+n+' part(s). '+Object.keys(lib).length+' in added library.';};
+  $('clearLib').onclick=()=>{LS.del('amapolaParts');$('libStatus').textContent='Added library cleared (seed parts remain).';};
+  updateCountryUI();render();
+});
+</script>
+</body>
+</html>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
