@@ -86,6 +86,24 @@
   .blank{border-bottom:1px solid #000;display:inline-block;min-width:110px;padding:0 4px;font-weight:600}
   .note{font-size:10.5px;color:#666;margin-top:24px;border-top:1px solid #ccc;padding-top:6px}
   .verifyflag{color:#b00;font-weight:600}
+  /* --- AMICOS Shipment Helper --- */
+  #amicosCard h2{display:flex;justify-content:space-between;align-items:center}
+  .amdot{width:9px;height:9px;border-radius:50%;background:#c9ced3;display:inline-block;box-shadow:0 0 0 2px #fff;flex:0 0 auto}
+  .amdot.on{background:var(--ok)} .amdot.off{background:#c33} .amdot.busy{background:var(--warn)}
+  .amgrid{margin-top:6px;max-height:232px;overflow:auto;border:1px solid var(--line);border-radius:6px;display:none}
+  .amgrid.show{display:block}
+  .amrow{padding:6px 8px;border-bottom:1px solid #eef2f5;cursor:pointer;font-size:11.5px}
+  .amrow:last-child{border-bottom:0} .amrow:hover{background:#eef6fc}
+  .amrow .t{font-weight:600;color:var(--dark)} .amrow .m{color:var(--muted)}
+  .ampill{display:inline-block;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:1px 5px;border-radius:9px;background:#e7eef4;color:var(--dark);margin-left:4px}
+  .ampill.awb{background:#e6f5ec;color:var(--ok)}
+  .amchoose{border:1px dashed #cbd6df;border-radius:7px;padding:8px 9px;margin-top:9px;background:#f7fbfe}
+  .amchoose .cap{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--warn);font-weight:700;margin-bottom:4px}
+  .amchoose label{display:flex;gap:7px;align-items:flex-start;font-weight:400;text-transform:none;color:var(--ink);margin:5px 0}
+  .amchoose label b{color:var(--dark)} .amchoose label .m{color:var(--muted);font-size:11px}
+  .amnote{white-space:pre-wrap;font-size:11px;color:#41505b;background:#f7fafc;border:1px solid var(--line);border-radius:6px;padding:6px 8px;margin-top:6px;max-height:120px;overflow:auto}
+  .amset{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);display:none}
+  .amset.show{display:block}
   @media print{
     body{background:#fff}.wrap{max-width:none;padding:0}.noprint{display:none!important}.layout{display:block}.preview{gap:0}
     .doc{border:0;border-radius:0;box-shadow:none;padding:12mm 14mm;page-break-after:always}.doc:last-child{page-break-after:auto}
@@ -102,8 +120,43 @@
 
   <div class="layout">
     <div class="noprint">
+      <div class="card" id="amicosCard" style="display:none">
+        <h2><span>⚡ Shipment Helper — AMICOS</span><span id="amDot" class="amdot" title="AMICOS connection"></span></h2>
+        <div id="amBody">
+          <div class="row2" style="align-items:end">
+            <div><label>Order type</label>
+              <select id="amType">
+                <option value="RO">RO — Repair order</option>
+                <option value="ROCE">ROCE — Repair (Celsius)</option>
+                <option value="SO">SO — Sales order</option>
+                <option value="CO">CO — Commercial order</option>
+                <option value="SM">SM — Stock move</option>
+                <option value="LO">LO — Loan out</option>
+              </select>
+            </div>
+            <div><label>Order number</label><input id="amNo" placeholder="e.g. 662259" inputmode="numeric" autocomplete="off"></div>
+          </div>
+          <button class="btn primary sm addrow" id="amLoad" style="width:100%;margin-top:8px">⤓ Load shipment from AMICOS</button>
+          <label style="margin-top:11px">Or search recent shipments</label>
+          <input id="amSearch" placeholder="order no · customer · part · tail" autocomplete="off">
+          <div class="amgrid" id="amResults"></div>
+          <div id="amChoose"></div>
+          <div class="hint" id="amStatus"></div>
+          <div class="hint" style="margin-top:8px"><a href="#" id="amSettingsToggle">connection settings</a></div>
+          <div class="amset" id="amSet">
+            <label>Backend URL</label><input id="amUrl" placeholder="http://127.0.0.1:8000">
+            <label>API token (optional)</label><input id="amToken" placeholder="leave blank if none" autocomplete="off">
+            <button class="btn ghost sm addrow" id="amSave">Save &amp; reconnect</button>
+          </div>
+        </div>
+        <div id="amOffline" class="hint" style="display:none">
+          <b>AMICOS not reachable.</b> Keep the NEXORA backend running, or use the manual PDF upload below — it always works offline.
+          <a href="#" id="amRetry">Retry</a> · <a href="#" id="amSettingsToggle2">settings</a>
+        </div>
+      </div>
+
       <div class="card">
-        <h2>1 · Upload the order</h2>
+        <h2>1 · Upload the order <span class="hint" style="text-transform:none;font-weight:400">— or fill in by hand</span></h2>
         <div class="uploader" id="dropZone">
           <input type="file" id="pdfFile" accept="application/pdf" multiple hidden>
           <button class="btn primary" id="uploadBtn" style="width:100%">📄 Upload SO / SM / RO PDF(s)</button>
@@ -151,7 +204,11 @@
           <div><label>Net weight (kg)</label><input id="netWeight" class="num" placeholder="e.g. 1.10"></div>
           <div><label>Gross weight (kg)</label><input id="weight" class="num" placeholder="e.g. 1.32"></div>
         </div>
-        <label>Box / package L×W×H (cm)</label><input id="boxDim" placeholder="e.g. 52*33*25">
+        <label>Box / package L×W×H (cm) <span class="hint" style="text-transform:none;font-weight:400">— for a single package; use the list below for several</span></label><input id="boxDim" placeholder="e.g. 52*33*25">
+        <label style="margin-top:8px">Multiple boxes / pallets? Add one row each <span class="hint" style="text-transform:none;font-weight:400">(different sizes &amp; weights)</span></label>
+        <table class="items"><thead><tr><th style="width:34px">Qty</th><th>Type</th><th>L×W×H (cm)</th><th>Gross wt (kg)</th><th></th></tr></thead><tbody id="boxBody"></tbody></table>
+        <button class="btn ghost sm addrow" id="addBox">+ Add box / pallet</button>
+        <div class="hint" id="boxTotals"></div>
         <div class="row2">
           <div><label>Transport company (carrier)</label><input id="carrier" placeholder="e.g. FedEx, DHL, TNT"></div>
           <div><label>Transport value (freight)</label><input id="freight" class="num" placeholder="0.00"></div>
@@ -160,14 +217,17 @@
           <div><label>Insurance</label><input id="insurance" class="num"></div>
           <div><label>Tax rate %</label><input id="taxrate" class="num"></div>
         </div>
-        <label>Handling airport (destination) <span class="hint" style="text-transform:none;font-weight:400">— auto from country</span></label>
-        <input id="destAirport" placeholder="auto">
+        <label>Handling airport (destination) <span class="hint" style="text-transform:none;font-weight:400">— nearest to ship-to; pick a closer one from the list</span></label>
+        <input id="destAirport" list="airportList" placeholder="auto — nearest to the delivery address">
+        <datalist id="airportList"></datalist>
+        <div class="hint" id="airportStatus"></div>
         <label>Special handling note (e.g. DG / hazmat)</label>
         <input id="handling" placeholder="optional">
         <label style="margin-top:10px;display:flex;align-items:center;gap:6px;font-weight:600"><input type="checkbox" id="pkgList" style="width:auto;margin:0">Also generate a Packing List (auto for Brazil)</label>
 
         <div class="usaBox" id="usaBox">
           <h3>USA — declaration details (CBP 3311 + Foreign Shipper)</h3>
+          <label style="display:flex;align-items:center;gap:6px;font-weight:600;margin-top:0"><input type="checkbox" id="usDecls" checked style="width:auto;margin:0">Include CBP 3311 + Foreign Shipper's Declaration</label>
           <div class="row2">
             <div><label>Manufacturer</label><input id="usMfr" placeholder="auto / from library"></div>
             <div><label>City &amp; state of manufacture</label><input id="usMfrCity" placeholder="auto / from library"></div>
@@ -177,7 +237,7 @@
             <div><label>Exported on or about</label><input id="usExportDate" type="date"></div>
           </div>
           <div class="row2">
-            <div><label>Port of entry (return)</label><input id="usEntryPort" placeholder="auto"></div>
+            <div><label>Port of entry (return)</label><input id="usEntryPort" list="airportList" placeholder="auto — nearest to ship-to"></div>
             <div><label>Reason for return</label><input id="usReason"></div>
           </div>
           <div class="row3">
@@ -202,7 +262,13 @@
           <div><label>No. of pallets / wooden units</label><input id="pkgUnits" placeholder="1"></div>
           <div><label>Treatment / packing date</label><input id="pkgDate" type="date"></div>
         </div>
-        <div class="hint">EPAL pallets are already heat-treated (HT) and carry the IPPC mark — pick “EPAL Euro pallet” + “Heat treated” and a treatment declaration is generated. Read the country code &amp; registration number from the IPPC stamp on the pallet.</div>
+        <label>Multiple pallets? Add one row per pallet <span class="hint" style="text-transform:none;font-weight:400">(each with its own size &amp; IPPC mark)</span></label>
+        <table class="items"><thead><tr><th>Pallet L×W×H (cm)</th><th>IPPC mark (e.g. SE&nbsp;–&nbsp;1234&nbsp;–&nbsp;HT)</th><th></th></tr></thead><tbody id="palletBody"></tbody></table>
+        <button class="btn ghost sm addrow" id="addPallet">+ Add pallet</button>
+        <label style="margin-top:8px">Photo of the IPPC stamp on the pallet (Annex A) — optional</label>
+        <input type="file" id="stampPhoto" accept="image/*">
+        <div class="hint" id="stampStatus"></div>
+        <div class="hint"><b>Works for any destination</b> — whenever you ship on a pallet or wooden box and pick a treatment here, the ISPM 15 certificate is generated (Brazil, and any other country that asks for it). You do not treat the wood — this issues a formal <b>company declaration</b> that the shipment is packed on a pallet bearing a valid IPPC mark, verified from the stamp. Read the country code &amp; registration number off the stamp; attaching a photo (Annex A) makes it far more credible at customs.</div>
       </div>
 
       <div class="card">
@@ -246,14 +312,24 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAYUAAABjCAYAAAB0SRxjAA
 const CURRENCIES=["USD","EUR","GBP","SEK","NOK","DKK","CHF","CAD","AED","SGD"];
 const COUNTRIES=[["Austria","eu"],["Belgium","eu"],["Bulgaria","eu"],["Croatia","eu"],["Cyprus","eu"],["Czechia","eu"],["Denmark","eu"],["Estonia","eu"],["Finland","eu"],["France","eu"],["Germany","eu"],["Greece","eu"],["Hungary","eu"],["Ireland","eu"],["Italy","eu"],["Latvia","eu"],["Lithuania","eu"],["Luxembourg","eu"],["Malta","eu"],["Netherlands","eu"],["Poland","eu"],["Portugal","eu"],["Romania","eu"],["Slovakia","eu"],["Slovenia","eu"],["Spain","eu"],["Sweden","eu"],["Norway (OSL)","ci"],["United Kingdom","ci"],["Switzerland","ci"],["Iceland","ci"],["Turkey","ci"],["Serbia","ci"],["United States","usa"],["Algeria","ci"],["Angola","ci"],["Egypt","ci"],["Ethiopia","ci"],["Ghana","ci"],["Kenya","ci"],["Morocco","ci"],["Nigeria","ci"],["Rwanda","ci"],["Senegal","ci"],["South Africa","ci"],["Tanzania","ci"],["Tunisia","ci"],["Uganda","ci"],["Zambia","ci"],["Brazil","br"],["Mexico","ci"],["United Arab Emirates","ci"],["Other non-EU country","ci"]];
 const AIRPORTS={"Norway (OSL)":"Oslo Gardermoen (OSL)","United Kingdom":"London Heathrow (LHR)","Switzerland":"Zürich (ZRH)","Iceland":"Keflavík (KEF)","Turkey":"Istanbul (IST)","Serbia":"Belgrade (BEG)","Algeria":"Algiers (ALG)","Angola":"Luanda (LAD)","Egypt":"Cairo (CAI)","Ethiopia":"Addis Ababa (ADD)","Ghana":"Accra (ACC)","Kenya":"Nairobi (NBO)","Morocco":"Casablanca (CMN)","Nigeria":"Lagos (LOS)","Rwanda":"Kigali (KGL)","Senegal":"Dakar (DSS)","South Africa":"Johannesburg (JNB)","Tanzania":"Dar es Salaam (DAR)","Tunisia":"Tunis (TUN)","Uganda":"Entebbe (EBB)","Zambia":"Lusaka (LUN)","Brazil":"São Paulo–Guarulhos (GRU)","Mexico":"Mexico City (MEX)","United Arab Emirates":"Dubai (DXB)"};
-const US_STATE_AIRPORT={FL:"Miami (MIA)",CA:"Los Angeles (LAX)",TX:"Dallas–Fort Worth (DFW)",NY:"New York (JFK)",NJ:"New York (EWR)",GA:"Atlanta (ATL)",IL:"Chicago (ORD)",WA:"Seattle (SEA)",AZ:"Phoenix (PHX)",CO:"Denver (DEN)",MA:"Boston (BOS)",OH:"Cincinnati (CVG)",NC:"Charlotte (CLT)",CT:"New York (JFK)"};
+const US_STATE_AIRPORT={AL:"Birmingham (BHM)",AK:"Anchorage (ANC)",AZ:"Phoenix (PHX)",AR:"Little Rock (LIT)",CA:"Los Angeles (LAX)",CO:"Denver (DEN)",CT:"Hartford (BDL)",DE:"Philadelphia (PHL)",DC:"Washington (IAD)",FL:"Miami (MIA)",GA:"Atlanta (ATL)",HI:"Honolulu (HNL)",ID:"Boise (BOI)",IL:"Chicago (ORD)",IN:"Indianapolis (IND)",IA:"Des Moines (DSM)",KS:"Wichita (ICT)",KY:"Louisville (SDF)",LA:"New Orleans (MSY)",ME:"Portland ME (PWM)",MD:"Baltimore (BWI)",MA:"Boston (BOS)",MI:"Detroit (DTW)",MN:"Minneapolis (MSP)",MS:"Jackson (JAN)",MO:"St. Louis (STL)",MT:"Billings (BIL)",NE:"Omaha (OMA)",NV:"Las Vegas (LAS)",NH:"Manchester NH (MHT)",NJ:"Newark (EWR)",NM:"Albuquerque (ABQ)",NY:"New York (JFK)",NC:"Charlotte (CLT)",ND:"Fargo (FAR)",OH:"Cincinnati (CVG)",OK:"Oklahoma City (OKC)",OR:"Portland (PDX)",PA:"Philadelphia (PHL)",RI:"Providence (PVD)",SC:"Charleston SC (CHS)",SD:"Sioux Falls (FSD)",TN:"Nashville (BNA)",TX:"Dallas–Fort Worth (DFW)",UT:"Salt Lake City (SLC)",VT:"Burlington (BTV)",VA:"Washington (IAD)",WA:"Seattle (SEA)",WV:"Charleston WV (CRW)",WI:"Milwaukee (MKE)",WY:"Denver (DEN)"};
+const US_CITY_AIRPORT={"CORAL SPRINGS":"Miami (MIA)","FORT LAUDERDALE":"Fort Lauderdale (FLL)","MIAMI":"Miami (MIA)","ORLANDO":"Orlando (MCO)","TAMPA":"Tampa (TPA)","HOUSTON":"Houston (IAH)","LOS ANGELES":"Los Angeles (LAX)","SAN FRANCISCO":"San Francisco (SFO)","SAN DIEGO":"San Diego (SAN)","NEW YORK":"New York (JFK)","NEWARK":"New York (EWR)","CHICAGO":"Chicago (ORD)","ATLANTA":"Atlanta (ATL)","DALLAS":"Dallas–Fort Worth (DFW)","FORT WORTH":"Dallas–Fort Worth (DFW)","SEATTLE":"Seattle (SEA)","BOSTON":"Boston (BOS)","DENVER":"Denver (DEN)","PHOENIX":"Phoenix (PHX)","WICHITA":"Wichita (ICT)","TULSA":"Tulsa (TUL)","MEMPHIS":"Memphis (MEM)","DETROIT":"Detroit (DTW)","LOUISVILLE":"Louisville (SDF)"};
 const SEED_PARTS={
   "70268":{mfr:"Eaton Aerospace (Eaton Corporation)",origin:"United States",city:"Los Angeles, CA, USA",hs:"8807.30",note:"Pneumatic pressure regulator / relief valve — Fokker F27 Mk050"},
-  "PS870A2SKIT":{mfr:"PRC-DeSoto International (PPG Aerospace)",origin:"United States",city:"Sylmar, CA, USA",hs:"3214.10",note:"Polysulfide aircraft sealant (MIL-PRF-81733) — DG/hazmat"}
+  "PS870A2SKIT":{mfr:"PRC-DeSoto International (PPG Aerospace)",origin:"United States",city:"Sylmar, CA, USA",hs:"3214.10",note:"Polysulfide aircraft sealant (MIL-PRF-81733) — DG/hazmat"},
+  "10839F":{mfr:"Pratt & Whitney Canada",origin:"Canada",city:"Longueuil, Québec, Canada",hs:"8409.10",note:"Fuel Heater — PW100 engines (OEM P&WC 3120075-02). Canadian origin — NOT US-origin."},
+  "10839BEF":{mfr:"Pratt & Whitney Canada",origin:"Canada",city:"Longueuil, Québec, Canada",hs:"8409.10",note:"Fuel Heater (BEF variant) — PW100 engines. Canadian origin — NOT US-origin."},
+  "066-50001-3404":{mfr:"Honeywell International (Honeywell Aerospace)",origin:"United States",city:"Glendale, AZ, USA",hs:"9014.20",note:"IVA-81A TA/VSI — vertical-speed / TCAS display"}
+};
+// part-number family rules (prefix match) — used when the exact P/N isn't listed
+const SEED_PREFIX={
+  "066-50001":{mfr:"Honeywell International (Honeywell Aerospace)",origin:"United States",city:"Glendale, AZ, USA",hs:"9014.20",note:"Honeywell IVA-81A TA/VSI vertical-speed / TCAS display family"},
+  "066-":{mfr:"Honeywell International (Honeywell Aerospace)",origin:"United States",city:"Phoenix, AZ, USA",hs:"",note:"Honeywell / Bendix avionics (066- series) — US origin (verify exact model)"}
 };
 
 const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
 let SIGNATURE=LS.get('amapolaSig')||'';
+let ANNEX_PHOTO='';
 function sigTag(h){return SIGNATURE?'<img src="'+SIGNATURE+'" alt="signature" style="max-height:'+h+'px;max-width:210px;display:block;margin-bottom:2px">':'';}
 const $=id=>document.getElementById(id);
 const esc=s=>(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
@@ -272,7 +348,8 @@ function syncDates(){if($('usExportDate')&&!$('usExportDate').dataset.touched&&$
 
 function loadLib(){try{return JSON.parse(LS.get('amapolaParts')||'{}');}catch(e){return {};}}
 function saveLib(lib){LS.set('amapolaParts',JSON.stringify(lib));}
-function libLookup(pn){const lib=loadLib();const k=(pn||'').toUpperCase().trim();return lib[k]||SEED_PARTS[k]||null;}
+function libLookup(pn){const k=(pn||'').toUpperCase().trim();if(!k)return null;const lib=loadLib();if(lib[k])return lib[k];if(SEED_PARTS[k])return SEED_PARTS[k];
+  let best=null,bl=0;for(const p in SEED_PREFIX){if(k.indexOf(p.toUpperCase())===0&&p.length>bl){best=SEED_PREFIX[p];bl=p.length;}}return best;}
 
 function addRow(d){
   d=d||{};
@@ -306,19 +383,271 @@ function getItems(){
   })).filter(i=>i.pn||i.sn||i.bn||i.desc||i.val);
 }
 
+/* ============================================================================
+   AMICOS Shipment Helper — additive. The page works fully WITHOUT it (PDF upload
+   + manual entry). When the local NEXORA backend is reachable, this pulls a
+   shipment straight from AMICOS by order number and lists recent shipments.
+   ============================================================================ */
+const AM_DEFAULT_URL='http://127.0.0.1:8000';
+const AM={
+  url(){ if(location.protocol==='http:'||location.protocol==='https:') return location.origin.replace(/\/+$/,'');
+         return (LS.get('amapolaAmicosUrl')||AM_DEFAULT_URL).replace(/\/+$/,''); },
+  token(){ return (LS.get('amapolaAmicosToken')||'').trim(); },
+  async get(path){
+    const h={}; const t=this.token(); if(t)h['Authorization']='Bearer '+t;
+    const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),12000);
+    try{ const r=await fetch(this.url()+path,{headers:h,mode:'cors',signal:ctl.signal});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      return await r.json();
+    } finally { clearTimeout(to); }
+  }
+};
+let AM_DETAIL=null; // last loaded shipment, kept so the consignee can be re-picked
+
+function amState(s,msg){ const d=$('amDot'); if(d)d.className='amdot'+(s?(' '+s):''); if(msg!==undefined&&$('amStatus'))$('amStatus').textContent=msg; }
+function amShowOffline(on){ if($('amBody'))$('amBody').style.display=on?'none':''; if($('amOffline'))$('amOffline').style.display=on?'':'none'; if(on)amState('off'); }
+
+async function amHealth(){
+  amState('busy','Connecting to AMICOS…');
+  try{
+    const h=await AM.get('/health');
+    let en=true; try{ const s=await AM.get('/shipment/status'); en=(s.enabled!==false)&&(s.db_connected!==false); }catch(e){}
+    if(h && h.db_connected!==false && en){ amShowOffline(false); amState('on','Connected · '+AM.url().replace(/^https?:\/\//,'')); return true; }
+    throw new Error('database not connected');
+  }catch(e){ amShowOffline(true); return false; }
+}
+
+function amRenderResults(list){
+  const box=$('amResults'); if(!box) return;
+  if(!list||!list.length){ box.classList.remove('show'); box.innerHTML=''; return; }
+  box.innerHTML=list.map(s=>{
+    const awb=s.has_awb?'<span class="ampill awb">AWB</span>':'';
+    const where=[s.ship_to_name||s.customer_name,s.country].filter(Boolean).join(' · ');
+    return '<div class="amrow" data-t="'+esc(s.order_type)+'" data-n="'+esc(''+s.order_no)+'">'
+      +'<div class="t">'+esc(s.label)+' <span class="ampill">'+esc(s.ship_mode||'')+'</span>'+awb+'</div>'
+      +'<div class="m">'+esc(where)+(s.description?(' — '+esc(s.description)):'')+'</div></div>';
+  }).join('');
+  box.classList.add('show');
+  [...box.querySelectorAll('.amrow')].forEach(r=>r.onclick=()=>amLoad(r.dataset.t,r.dataset.n));
+}
+
+let _amSearchTimer=null;
+function amSearchDebounced(){ clearTimeout(_amSearchTimer); _amSearchTimer=setTimeout(amSearch,350); }
+async function amSearch(){
+  const q=$('amSearch').value.trim();
+  if(q.length<2){ amRenderResults([]); amState('on',''); return; }
+  amState('busy','Searching…');
+  try{ const d=await AM.get('/shipment/orders?limit=25&q='+encodeURIComponent(q));
+    amRenderResults(d.shipments||[]); amState('on',((d.count||0))+' shipment(s) — click one to load');
+  }catch(e){ amState('off','Search failed — '+e.message); amShowOffline(true); }
+}
+
+async function amLoad(type,no){
+  type=type||$('amType').value; no=(''+(no||$('amNo').value)).trim();
+  if(!no){ amState('on','Enter an order number, or search below.'); $('amNo').focus(); return; }
+  amState('busy','Loading '+type+' '+no+' …'); $('amChoose').innerHTML='';
+  try{ const d=await AM.get('/shipment/order/'+encodeURIComponent(type)+'/'+encodeURIComponent(no));
+    if(!d.found){ amState('off','Not found: '+type+' '+no+'. Check the type/number.'); return; }
+    AM_DETAIL=d;
+    applyShipment(d, d.consignee_recommended_role||'');
+    amRenderConsigneeChooser(d);
+    $('amResults').classList.remove('show');
+    $('amNo').value=d.order_no; $('amType').value=d.order_type;
+    amState('on','Loaded '+d.label+' — review, add weights/price, then print.');
+  }catch(e){ amState('off','Load failed — '+e.message); amShowOffline(true); }
+}
+
+function amRenderConsigneeChooser(d){
+  const box=$('amChoose'); if(!box) return;
+  if(!d.consignee_candidates||d.consignee_candidates.length<2){ box.innerHTML=''; return; }
+  const rc=d.consignee_recommended_role;
+  box.innerHTML='<div class="amchoose"><div class="cap">Ship-to — confirm the consignee</div>'
+    +d.consignee_candidates.map((c,i)=>{
+      const roleLbl=c.role==='organisation'?'Repair vendor / supplier':'Customer';
+      const chk=(c.role===rc)?'checked':'';
+      return '<label><input type="radio" name="amcon" value="'+i+'" '+chk+' style="width:auto;margin:2px 0 0">'
+        +'<span><b>'+esc(c.name)+'</b> <span class="m">('+roleLbl+(c.country_name||c.country?(', '+esc(c.country_name||c.country)):'')+')</span>'
+        +(c.address_choice_required?'<span class="m"> — several addresses on file, verify</span>':'')+'</span></label>';
+    }).join('')+'</div>';
+  [...box.querySelectorAll('input[name=amcon]')].forEach(r=>r.onchange=()=>{ applyConsignee(d.consignee_candidates[+r.value]); render(); });
+}
+
+function amReasonFor(type){
+  const t=(type||'').toUpperCase();
+  if(t==='RO'||t==='ROCE'||t==='ROKO'||t==='ROSA') return 'Aircraft component sent for repair and return';
+  if(t==='LO') return 'Aircraft component sent on loan';
+  if(t==='SO') return 'Sale of aircraft component';
+  if(t==='CO') return 'Commercial delivery of goods';
+  if(t==='SM') return 'Stock movement of aircraft component';
+  return '';
+}
+
+// AMICOS COUNTRY descriptions are quirky (GB="Great Britain", NO="Norway",
+// CH="Switzerland.", NL="Holland", IS="Island") and codes aren't reliably ISO, so
+// map the common spellings the postal address / country field actually use onto the
+// tool's curated dropdown values. The postal address is the tiebreaker.
+const AM_COUNTRY_ALIAS={
+  'GREAT BRITAIN':'United Kingdom','ENGLAND':'United Kingdom','SCOTLAND':'United Kingdom','WALES':'United Kingdom','NORTHERN IRELAND':'United Kingdom','GB':'United Kingdom','UK':'United Kingdom',
+  'USA':'United States','U.S.A':'United States','UNITED STATES OF AMERICA':'United States','US':'United States',
+  'HOLLAND':'Netherlands','THE NETHERLANDS':'Netherlands','NEDERLAND':'Netherlands',
+  'ISLAND':'Iceland','NORWAY':'Norway (OSL)','NORGE':'Norway (OSL)','SWITZERLAND':'Switzerland','SCHWEIZ':'Switzerland',
+  'UAE':'United Arab Emirates','U.A.E':'United Arab Emirates',
+  'DEUTSCHLAND':'Germany','SVERIGE':'Sweden','ESPANA':'Spain','ESPAÑA':'Spain','SPANIEN':'Spain','SPAIN':'Spain'
+};
+function amMatchCountry(txt){
+  if(!txt) return null;
+  const t=(''+txt).trim().replace(/[.,]+$/,'').toUpperCase();
+  if(!t) return null;
+  if(AM_COUNTRY_ALIAS[t]) return AM_COUNTRY_ALIAS[t];
+  return matchCountry(t);
+}
+function amResolveCountry(c){
+  const tries=[c.country_name,c.country];
+  if(c.best_address) tries.push(...c.best_address.split('\n'));
+  for(let i=0;i<tries.length;i++){ const m=amMatchCountry((tries[i]||'').trim()); if(m) return m; }
+  return '';
+}
+
+function applyConsignee(c){
+  if(!c) return;
+  $('toCompany').value=[c.name,c.name2].filter(Boolean).join(' ');
+  if(c.best_address)$('toAddress').value=c.best_address;
+  $('toContact').value=c.contact||'';
+  $('toEmail').value=c.email||'';
+  $('custId').value=c.org_id||'';
+  // Reflect the chosen consignee: set the matched destination, or clear it (so a stale
+  // previous destination never lingers when the new party isn't in the curated list).
+  $('country').value=amResolveCountry(c); updateCountryUI();
+  if(c.currency){ const has=[...$('currency').options].some(o=>o.value===c.currency); if(has)$('currency').value=c.currency; }
+  applyAirport(); scheduleGeo();
+}
+
+function applyShipment(d, role){
+  $('refType').value=d.order_type||''; $('refNo').value=(d.order_no!=null?(''+d.order_no):(d.reference||d.label||''));
+  if(!$('reason').value) $('reason').value=amReasonFor(d.order_type);
+  if(d.carrier_suggestion){ $('carrier').value=d.carrier_suggestion+(d.freight_account?(' (acct '+d.freight_account+')'):''); }
+  const cand=(d.consignee_candidates||[]);
+  applyConsignee(cand.find(c=>c.role===role)||cand[0]);
+  // line items — replace the table with the AMICOS lines
+  $('itemBody').innerHTML='';
+  (d.lines||[]).forEach(l=>addRow({pn:l.part_no,sn:l.serial_no,bn:l.batch_no,desc:l.description,qty:(l.qty||'')}));
+  if(!(d.lines||[]).length) addRow({});
+  // ship / pack notes shown as read-only reference (carrier/cert instructions)
+  const notes=[]; if(d.ship_note)notes.push('SHIP: '+d.ship_note); if(d.pack_note)notes.push('PACK: '+d.pack_note);
+  let nb=$('amNotes');
+  if(!nb && $('amStatus')){ nb=document.createElement('div'); nb.id='amNotes'; nb.className='amnote'; $('amStatus').parentNode.insertBefore(nb,$('amStatus')); }
+  if(nb){ nb.textContent=notes.join('\n\n'); nb.style.display=notes.length?'':'none'; }
+  render();
+}
+
+function amToggleSettings(){ const s=$('amSet'); s.classList.toggle('show'); $('amUrl').value=LS.get('amapolaAmicosUrl')||AM_DEFAULT_URL; $('amToken').value=LS.get('amapolaAmicosToken')||''; }
+
+function initAmicos(){
+  if(!$('amicosCard')) return;
+  $('amicosCard').style.display='';
+  $('amLoad').onclick=()=>amLoad();
+  $('amNo').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); amLoad(); } });
+  $('amSearch').addEventListener('input',amSearchDebounced);
+  if($('amRetry'))$('amRetry').onclick=e=>{ e.preventDefault(); amHealth(); };
+  $('amSettingsToggle').onclick=e=>{ e.preventDefault(); amToggleSettings(); };
+  if($('amSettingsToggle2'))$('amSettingsToggle2').onclick=e=>{ e.preventDefault(); amShowOffline(false); amToggleSettings(); };
+  $('amSave').onclick=()=>{ const u=$('amUrl').value.trim(), t=$('amToken').value.trim();
+    if(u)LS.set('amapolaAmicosUrl',u); else LS.del('amapolaAmicosUrl');
+    if(t)LS.set('amapolaAmicosToken',t); else LS.del('amapolaAmicosToken');
+    $('amSet').classList.remove('show'); amHealth(); };
+  amHealth();
+}
+window.addEventListener('DOMContentLoaded',initAmicos);
+
 function initCountries(){const s=$('country');const blank=document.createElement('option');blank.value='';blank.textContent='— select / from document —';s.appendChild(blank);COUNTRIES.forEach(([n,r])=>{const o=document.createElement('option');o.value=n;o.dataset.region=r;o.textContent=n;s.appendChild(o);});s.value='';}
 function region(){const o=$('country').selectedOptions[0];return o&&o.dataset.region?o.dataset.region:'';}
 function matchCountry(t){t=(t||'').toUpperCase().trim();const m={'USA':'United States','US':'United States','UNITED STATES':'United States','UK':'United Kingdom','UNITED KINGDOM':'United Kingdom','NORWAY':'Norway (OSL)'};if(m[t])return m[t];const o=[...$('country').options].find(x=>x.value&&(x.value.toUpperCase()===t||x.value.toUpperCase().replace(/ \(OSL\)/,'')===t));return o?o.value:null;}
 
+// international airports per destination country [city, IATA] — used to pick the nearest to the ship-to city and to offer choices
+// [city, IATA, lat, lon] — used to pick the nearest airport to the ship-to location by distance
+const COUNTRY_AIRPORTS={
+  "Norway (OSL)":[["Oslo","OSL",60.19,11.10],["Bergen","BGO",60.29,5.22],["Stavanger","SVG",58.88,5.63],["Trondheim","TRD",63.46,10.92],["Tromsø","TOS",69.68,18.92],["Kristiansand","KRS",58.20,8.09],["Ålesund","AES",62.56,6.11],["Bodø","BOO",67.27,14.37]],
+  "United Kingdom":[["London Heathrow","LHR",51.47,-0.45],["London Gatwick","LGW",51.15,-0.19],["London Stansted","STN",51.89,0.24],["Manchester","MAN",53.35,-2.27],["Birmingham","BHX",52.45,-1.75],["East Midlands","EMA",52.83,-1.33],["Bristol","BRS",51.38,-2.72],["Leeds Bradford","LBA",53.87,-1.66],["Glasgow","GLA",55.87,-4.43],["Edinburgh","EDI",55.95,-3.37],["Aberdeen","ABZ",57.20,-2.20],["Newcastle","NCL",55.04,-1.69]],
+  "Switzerland":[["Zürich","ZRH",47.46,8.55],["Geneva","GVA",46.24,6.11],["Basel","BSL",47.59,7.53]],
+  "Iceland":[["Reykjavík (Keflavík)","KEF",63.99,-22.62]],
+  "Turkey":[["Istanbul","IST",41.26,28.74],["Ankara","ESB",40.13,32.99],["İzmir","ADB",38.29,27.16],["Antalya","AYT",36.90,30.79]],
+  "Serbia":[["Belgrade","BEG",44.82,20.31],["Niš","INI",43.34,21.85]],
+  "United States":[["New York (JFK)","JFK",40.64,-73.78],["New York (Newark)","EWR",40.69,-74.17],["Boston","BOS",42.36,-71.01],["Hartford","BDL",41.94,-72.68],["Providence","PVD",41.72,-71.43],["Manchester NH","MHT",42.93,-71.44],["Portland ME","PWM",43.65,-70.31],["Burlington","BTV",44.47,-73.15],["Philadelphia","PHL",39.87,-75.24],["Pittsburgh","PIT",40.49,-80.23],["Baltimore","BWI",39.18,-76.67],["Washington (Dulles)","IAD",38.95,-77.46],["Richmond","RIC",37.51,-77.32],["Raleigh–Durham","RDU",35.88,-78.79],["Charlotte","CLT",35.21,-80.94],["Charleston SC","CHS",32.90,-80.04],["Atlanta","ATL",33.64,-84.43],["Birmingham","BHM",33.56,-86.75],["Jacksonville","JAX",30.49,-81.69],["Orlando","MCO",28.43,-81.31],["Tampa","TPA",27.98,-82.53],["Miami","MIA",25.79,-80.29],["Fort Lauderdale","FLL",26.07,-80.15],["Nashville","BNA",36.12,-86.68],["Memphis","MEM",35.04,-89.98],["Louisville","SDF",38.17,-85.74],["Evansville","EVV",38.04,-87.53],["Indianapolis","IND",39.72,-86.29],["Cincinnati","CVG",39.05,-84.67],["Columbus","CMH",39.998,-82.89],["Cleveland","CLE",41.41,-81.85],["Detroit","DTW",42.21,-83.35],["Chicago","ORD",41.98,-87.90],["Milwaukee","MKE",42.95,-87.90],["Minneapolis","MSP",44.88,-93.22],["Des Moines","DSM",41.53,-93.66],["Omaha","OMA",41.30,-95.89],["St. Louis","STL",38.75,-90.37],["Kansas City","MCI",39.30,-94.71],["Wichita","ICT",37.65,-97.43],["Oklahoma City","OKC",35.39,-97.60],["Tulsa","TUL",36.20,-95.89],["Little Rock","LIT",34.73,-92.22],["Jackson MS","JAN",32.31,-90.08],["New Orleans","MSY",29.99,-90.26],["Dallas–Fort Worth","DFW",32.90,-97.04],["Austin","AUS",30.19,-97.67],["San Antonio","SAT",29.53,-98.47],["Houston","IAH",29.99,-95.34],["Albuquerque","ABQ",35.04,-106.61],["Denver","DEN",39.86,-104.67],["Salt Lake City","SLC",40.79,-111.98],["Boise","BOI",43.56,-116.22],["Billings","BIL",45.81,-108.54],["Phoenix","PHX",33.43,-112.01],["Las Vegas","LAS",36.08,-115.15],["Los Angeles","LAX",33.94,-118.41],["San Diego","SAN",32.73,-117.19],["San Francisco","SFO",37.62,-122.38],["Portland","PDX",45.59,-122.60],["Seattle","SEA",47.45,-122.31],["Fargo","FAR",46.92,-96.82],["Sioux Falls","FSD",43.58,-96.74],["Anchorage","ANC",61.17,-149.99],["Honolulu","HNL",21.32,-157.92]],
+  "Algeria":[["Algiers","ALG",36.69,3.22],["Oran","ORN",35.62,-0.62]],"Angola":[["Luanda","LAD",-8.86,13.23]],
+  "Egypt":[["Cairo","CAI",30.11,31.40],["Alexandria (Borg El Arab)","HBE",30.92,29.70]],"Ethiopia":[["Addis Ababa","ADD",8.98,38.80]],"Ghana":[["Accra","ACC",5.61,-0.17]],
+  "Kenya":[["Nairobi","NBO",-1.32,36.93],["Mombasa","MBA",-4.03,39.59]],"Morocco":[["Casablanca","CMN",33.37,-7.59],["Marrakech","RAK",31.61,-8.04],["Rabat","RBA",34.05,-6.75],["Tangier","TNG",35.73,-5.92]],
+  "Nigeria":[["Lagos","LOS",6.58,3.32],["Abuja","ABV",9.01,7.26],["Port Harcourt","PHC",5.02,6.95]],"Rwanda":[["Kigali","KGL",-1.97,30.13]],"Senegal":[["Dakar","DSS",14.67,-17.07]],
+  "South Africa":[["Johannesburg","JNB",-26.13,28.24],["Cape Town","CPT",-33.97,18.60],["Durban","DUR",-29.61,31.12]],
+  "Tanzania":[["Dar es Salaam","DAR",-6.87,39.20],["Kilimanjaro","JRO",-3.43,37.07],["Zanzibar","ZNZ",-6.22,39.22]],"Tunisia":[["Tunis","TUN",36.85,10.24],["Djerba","DJE",33.87,10.78]],
+  "Uganda":[["Entebbe","EBB",0.04,32.44]],"Zambia":[["Lusaka","LUN",-15.33,28.45],["Ndola","NLA",-12.99,28.66]],
+  "Brazil":[["São Paulo–Guarulhos","GRU",-23.43,-46.47],["São Paulo (Congonhas)","CGH",-23.63,-46.66],["Campinas (Viracopos)","VCP",-23.01,-47.13],["Rio de Janeiro","GIG",-22.81,-43.25],["Belo Horizonte","CNF",-19.63,-43.97],["Brasília","BSB",-15.87,-47.92],["Curitiba","CWB",-25.53,-49.17],["Porto Alegre","POA",-29.99,-51.17],["Recife","REC",-8.13,-34.92],["Salvador","SSA",-12.91,-38.33],["Manaus","MAO",-3.04,-60.05],["Fortaleza","FOR",-3.78,-38.53]],
+  "Mexico":[["Mexico City","MEX",19.44,-99.07],["Guadalajara","GDL",20.52,-103.31],["Monterrey","MTY",25.78,-100.11]],
+  "United Arab Emirates":[["Dubai","DXB",25.25,55.36],["Abu Dhabi","AUH",24.43,54.65],["Sharjah","SHJ",25.33,55.52]]
+};
+// city -> "Name (CODE)" derived from the above, plus neighbouring-city shortcuts
+const CITY_ALL={};
+Object.values(COUNTRY_AIRPORTS).forEach(list=>list.forEach(a=>{const disp=a[0]+' ('+a[1]+')';const key=a[0].replace(/\s*\([^)]*\)/,'').toUpperCase();if(!CITY_ALL[key])CITY_ALL[key]=disp;}));
+// extra: cities/towns near a hub that aren't themselves airport cities
+Object.assign(CITY_ALL,{"CORAL SPRINGS":"Fort Lauderdale (FLL)","POMPANO":"Fort Lauderdale (FLL)","HOLLYWOOD":"Fort Lauderdale (FLL)","BARUERI":"São Paulo–Guarulhos (GRU)","GUARULHOS":"São Paulo–Guarulhos (GRU)","PRETORIA":"Johannesburg (JNB)","KAMPALA":"Entebbe (EBB)","LONDON":"London Heathrow (LHR)","NEW YORK":"New York (JFK)","NEWARK":"New York (Newark) (EWR)","WASHINGTON":"Washington (Dulles) (IAD)","REYKJAVIK":"Reykjavík (Keflavík) (KEF)"});
+const CITY_KEYS=Object.keys(CITY_ALL).sort((a,b)=>b.length-a.length); // longest first
+function airportOptions(country){const l=COUNTRY_AIRPORTS[country]||[];return l.map(a=>'<option value="'+a[0]+' ('+a[1]+')">').join('');}
+const US_IATA_DISP={}; (COUNTRY_AIRPORTS["United States"]||[]).forEach(a=>US_IATA_DISP[a[1]]=a[0]+' ('+a[1]+')');
+// US ZIP (first 3 digits) -> nearest airport IATA — gives a precise offline result without internet
+function usZip3Airport(z){
+  let c=null;
+  [[[5,5],'BOS'],[[10,27],'BOS'],[[28,29],'PVD'],[[30,38],'MHT'],[[39,49],'PWM'],[[50,59],'BTV'],[[60,69],'BDL'],
+   [[70,89],'EWR'],[[100,149],'JFK'],[[150,168],'PIT'],[[169,199],'PHL'],
+   [[200,205],'IAD'],[[206,219],'BWI'],[[220,229],'IAD'],[[230,239],'RIC'],[[240,246],'IAD'],[[247,268],'CRW'],
+   [[270,274],'CLT'],[[275,279],'RDU'],[[280,289],'CLT'],[[290,299],'CHS'],
+   [[300,319],'ATL'],[[320,326],'JAX'],[[327,329],'MCO'],[[330,334],'MIA'],[[335,342],'TPA'],[[344,349],'MCO'],
+   [[350,369],'BHM'],[[370,379],'BNA'],[[380,385],'MEM'],[[386,397],'JAN'],[[398,399],'ATL'],
+   [[400,409],'SDF'],[[420,427],'SDF'],[[430,436],'CMH'],[[437,439],'CVG'],[[440,449],'CLE'],[[450,459],'CVG'],
+   [[460,462],'IND'],[[463,464],'ORD'],[[465,469],'IND'],[[470,472],'CVG'],[[473,474],'IND'],[[475,478],'EVV'],[[479,479],'IND'],
+   [[480,499],'DTW'],[[500,528],'DSM'],[[530,549],'MKE'],[[550,567],'MSP'],[[570,577],'FSD'],[[580,588],'FAR'],[[590,599],'BIL'],
+   [[600,619],'ORD'],[[620,639],'STL'],[[640,658],'MCI'],[[660,662],'MCI'],[[664,679],'ICT'],[[680,693],'OMA'],
+   [[700,714],'MSY'],[[716,729],'LIT'],[[730,731],'OKC'],[[734,741],'TUL'],[[743,749],'OKC'],
+   [[750,769],'DFW'],[[770,779],'IAH'],[[780,784],'SAT'],[[786,789],'AUS'],[[790,797],'DFW'],[[798,799],'ABQ'],
+   [[800,831],'DEN'],[[832,838],'BOI'],[[840,847],'SLC'],[[850,865],'PHX'],[[870,885],'ABQ'],[[889,898],'LAS'],
+   [[900,918],'LAX'],[[919,921],'SAN'],[[922,935],'LAX'],[[936,961],'SFO'],[[967,968],'HNL'],[[970,979],'PDX'],[[980,994],'SEA'],[[995,999],'ANC']
+  ].forEach(e=>{if(c===null&&z>=e[0][0]&&z<=e[0][1])c=e[1];});
+  return (c&&US_IATA_DISP[c])?US_IATA_DISP[c]:'';
+}
 function destAirport(){
+  const up=$('toAddress').value.toUpperCase();
+  for(const k of CITY_KEYS){ if(up.indexOf(k)>=0) return CITY_ALL[k]; }   // 1) a known consignee city / neighbour
   const c=$('country').value;
-  if(c==='United States'){const up=$('toAddress').value.toUpperCase();const m=up.match(/\b([A-Z]{2})\s+\d{5}/)||up.match(/,\s*([A-Z]{2})\b/);const st=m?m[1]:'';return US_STATE_AIRPORT[st]||'';}
-  return AIRPORTS[c]||'';
+  if(c==='United States'){
+    const zm=up.match(/\b(\d{5})(?:-\d{4})?\b/);                          // 2) US ZIP (precise, offline)
+    if(zm){const z=usZip3Airport(parseInt(zm[1].slice(0,3),10)); if(z) return z;}
+    const m=up.match(/\b([A-Z]{2})\s+\d{5}/)||up.match(/,\s*([A-Z]{2})\b/); return US_STATE_AIRPORT[m?m[1]:'']||''; // 3) US state
+  }
+  const l=COUNTRY_AIRPORTS[c]; return l?(l[0][0]+' ('+l[0][1]+')'):(AIRPORTS[c]||'');   // 4) country's primary
 }
 function applyAirport(){
   const a=destAirport();
-  if(a){$('destAirport').value=a; if(region()==='usa'){if(!$('usEntryPort').value)$('usEntryPort').value=a; if(!$('usPort').value)$('usPort').value=a;}}
+  if(a){ if(!$('destAirport').dataset.touched)$('destAirport').value=a; if(region()==='usa'){if(!$('usEntryPort').value&&!$('usEntryPort').dataset.touched)$('usEntryPort').value=a; if(!$('usPort').value)$('usPort').value=a;}}
 }
+// ---- GPS: geocode the ship-to address and pick the closest airport by distance ----
+function haversine(la1,lo1,la2,lo2){const R=6371,dLa=(la2-la1)*Math.PI/180,dLo=(lo2-lo1)*Math.PI/180,x=Math.sin(dLa/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLo/2)**2;return 2*R*Math.asin(Math.sqrt(x));}
+async function geocode(q){try{const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q));if(!r.ok)return null;const j=await r.json();return (j&&j[0])?{lat:+j[0].lat,lon:+j[0].lon}:null;}catch(e){return null;}}
+function nearestByCoords(lat,lon,country){const l=COUNTRY_AIRPORTS[country];if(!l)return null;let best=null,bd=1e9;l.forEach(a=>{if(a.length>=4){const d=haversine(lat,lon,a[2],a[3]);if(d<bd){bd=d;best=a;}}});return best?{disp:best[0]+' ('+best[1]+')',km:Math.round(bd)}:null;}
+let _geoTimer=null;
+function resolveNearestAirport(){
+  const country=$('country').value, addr=$('toAddress').value.trim();
+  if(!addr||!COUNTRY_AIRPORTS[country]){$('airportStatus').textContent='';return;}
+  $('airportStatus').className='hint';$('airportStatus').textContent='📍 Locating the delivery address to find the closest airport…';
+  const cc=country.replace(/\s*\([^)]*\)/,'');
+  geocode(addr+', '+cc).then(g=>{
+    if(!g){$('airportStatus').className='hint';$('airportStatus').textContent='Nearest airport estimated from ZIP/city: '+($('destAirport').value||'—')+' (offline — pick a closer one from the list if needed).';return;}
+    const n=nearestByCoords(g.lat,g.lon,country);
+    if(!n){$('airportStatus').textContent='';return;}
+    if(!$('destAirport').dataset.touched)$('destAirport').value=n.disp;
+    if(region()==='usa'&&!$('usEntryPort').dataset.touched)$('usEntryPort').value=n.disp;
+    $('airportStatus').className='hint ok';$('airportStatus').innerHTML='✓ Closest airport: <b>'+esc(n.disp)+'</b> — about '+n.km+' km from the delivery address'+(n.km>250?' <span class="verifyflag">(nearest in list is still far — pick a closer one from the dropdown if one exists)</span>':'');
+    render();
+  });
+}
+function scheduleGeo(){clearTimeout(_geoTimer);_geoTimer=setTimeout(resolveNearestAirport,900);}
 
 function smartFill(){
   let known=0,unknown=[];
@@ -328,7 +657,7 @@ function smartFill(){
   let msg='';
   if(known)msg='✓ Manufacturer/origin filled for '+known+' part(s).';
   if($('destAirport').value)msg+=' Handling airport: '+esc($('destAirport').value)+'.';
-  if(unknown.length)msg+=' <span class="verifyflag">Not in library: '+esc(unknown.join(', '))+' — type the manufacturer/origin once, then “Save current parts”.</span>';
+  if(unknown.length)msg+=' <span class="verifyflag">Not recognised: '+esc(unknown.join(', '))+' — type its manufacturer/origin here, or send the part number to have it added to the built-in list.</span>';
   $('fillStatus').innerHTML=msg||'Nothing to fill yet.';
 }
 
@@ -356,12 +685,20 @@ async function parsePdf(file){
     const itemRe=/^(\d{1,3})\s+([A-Za-z0-9][A-Za-z0-9\.\-\/]*)\s+(\S+)\s+(.+?)\s+(\d+(?:[.,]\d+)?)\s+(EA|PCS?|SET|KIT|U|EU|NO|LOT|UN)\b/i;
     let parsed=[];
     allLines.forEach(l=>{const m=l.match(itemRe);if(m)parsed.push({pn:clean(m[2]),sn:clean(m[3]),bn:'',desc:clean(m[4]),qty:m[5].replace(',','.')});});
-    // FALLBACK: labelled order-note fields (only if no table row matched)
+    // FALLBACK 1: labelled order-note fields (RO/SO layout)
     if(!parsed.length){
       const pns=[...full.matchAll(/Part\s*Number\s*\(P\/N\):\s*([^\n]+)/gi)].map(m=>clean(m[1]));
       const sns=[...full.matchAll(/Serial\s*Number\s*\(S\/N\):\s*([^\n]+)/gi)].map(m=>clean(m[1]));
       const dss=[...full.matchAll(/(?:^|\n)\s*Description:\s*([^\n]+)/gi)].map(m=>clean(m[1]));
       pns.forEach((pn,i)=>parsed.push({pn,sn:sns[i]||'',bn:'',desc:dss[i]||'',qty:'1'}));
+    }
+    // FALLBACK 2: a plain parts-list PDF (no SO/SM/RO) — loose labels anywhere
+    if(!parsed.length){
+      const gp=[...full.matchAll(/\bP\/?N\b\s*[:.#-]?\s*([A-Za-z0-9][A-Za-z0-9.\-\/]{2,})/gi)].map(m=>clean(m[1]));
+      const gs=[...full.matchAll(/\bS\/?N\b\s*[:.#-]?\s*([A-Za-z0-9][A-Za-z0-9.\-\/]{1,})/gi)].map(m=>clean(m[1]));
+      const gb=[...full.matchAll(/\bB\/?N\b\s*[:.#-]?\s*([A-Za-z0-9][A-Za-z0-9.\-\/]{1,})/gi)].map(m=>clean(m[1]));
+      const gd=[...full.matchAll(/\b(?:Description|Desc|Nomenclature|Item)\b\s*[:.#-]?\s*([^\n]{3,})/gi)].map(m=>clean(m[1]));
+      gp.forEach((pn,i)=>parsed.push({pn,sn:gs[i]||'',bn:gb[i]||'',desc:gd[i]||'',qty:'1'}));
     }
     // enrich a single item's description with the richer labelled wording, and capture a batch number if stated
     if(parsed.length===1){
@@ -402,7 +739,7 @@ function totals(items){const sub=items.reduce((s,i)=>s+i.qty*i.val,0);const tax=
 function commercialInvoice(items){
   const t=totals(items);
   const rows=items.map(i=>`<tr><td>${esc(i.pn)}</td><td>${esc(i.sn)}</td><td>${esc(i.bn)}</td><td>${esc(i.desc)}</td><td>${esc(i.hs)}</td><td>${esc(i.origin)}</td><td class="r">${i.qty}</td><td class="r">${fmt(i.val)}</td><td class="r">${fmt(i.qty*i.val)}</td></tr>`).join("");
-  const ship=[];if($('boxes').value)ship.push(esc($('boxes').value)+" box(es)");if($('boxDim').value)ship.push("Dim "+esc($('boxDim').value)+" cm");if($('netWeight').value)ship.push("Net "+esc($('netWeight').value)+" kg");if($('weight').value)ship.push("Gross "+esc($('weight').value)+" kg");if($('carrier').value)ship.push("Carrier: "+esc($('carrier').value));if($('destAirport').value)ship.push("Airport: "+esc($('destAirport').value));if($('pkgType').value)ship.push("Pkg: "+esc($('pkgType').value)+($('pkgTreat').value?(" / "+$('pkgTreat').value):""));if($('handling').value)ship.push("<b>"+esc($('handling').value)+"</b>");
+  const ship=[];ship.push(esc(pkgCount())+" package(s)");const _ds=dimsSummary();if(_ds)ship.push(/see packing list/.test(_ds)?esc(_ds):("Dim "+esc(_ds)+" cm"));if($('netWeight').value)ship.push("Net "+esc($('netWeight').value)+" kg");const _gw=grossTotal();if(_gw)ship.push("Gross "+_gw.toFixed(1)+" kg");if($('carrier').value)ship.push("Carrier: "+esc($('carrier').value));if($('destAirport').value)ship.push("Airport: "+esc($('destAirport').value));if($('pkgType').value)ship.push("Pkg: "+esc($('pkgType').value)+($('pkgTreat').value?(" / "+$('pkgTreat').value):""));if($('handling').value)ship.push("<b>"+esc($('handling').value)+"</b>");
   const retDate=addMonths($('invDate').value,4);
   const t1=$('refType').value,r1=$('refNo').value,refDisp=esc(!r1?'':(t1&&r1.toUpperCase().indexOf(t1)!==0?t1+' '+r1:r1));
   return `<div class="doc" data-doc="Commercial Invoice">
@@ -443,13 +780,16 @@ function cbp3311(items){
   const t=totals(items);
   const arts=items.map(i=>`${esc(i.pn)}${snbn(i)?(" / "+snbn(i)):""} — ${esc(i.desc)} (Qty ${i.qty})`).join("<br>")||"&mdash;";
   const chk=on=>on?"☒":"☐";
+  const im=items.find(i=>i.mfr)||{};
+  const mfr=$('usMfr').value.trim()||im.mfr||'';
+  const city=$('usMfrCity').value.trim()||im.city||'';
   return `<div class="doc" data-doc="CBP 3311">
     <div style="text-align:center"><div style="font-size:10.5px">DEPARTMENT OF HOMELAND SECURITY · U.S. Customs and Border Protection</div>
     <div style="font-weight:700;font-size:15px;margin-top:2px">DECLARATION FOR FREE ENTRY OF RETURNED AMERICAN PRODUCTS</div>
     <div style="font-size:10px;color:#444">19 CFR 7.8, 10.1, 10.5, 10.66, 10.67, 12.41, 123.4, 143.23, 145.35 · CBP Form 3311</div></div>
     <table class="cbp">
-      <tr><td><div class="lab">1. Port</div><div class="v">${esc($('usEntryPort').value)||"&nbsp;"}</div></td><td><div class="lab">2. Date</div><div class="v">${fmtDate($('invDate').value)}</div></td><td><div class="lab">3. Entry No. &amp; Date</div><div class="v">&nbsp;</div></td></tr>
-      <tr><td colspan="2"><div class="lab">4. Name of Manufacturer</div><div class="v">${esc($('usMfr').value)||'<span class="verifyflag">[verify]</span>'}</div></td><td><div class="lab">5. City &amp; State of Manufacture</div><div class="v">${esc($('usMfrCity').value)||'<span class="verifyflag">[verify]</span>'}</div></td></tr>
+      <tr><td><div class="lab">1. Port (of entry)</div><div class="v">${esc($('usEntryPort').value.trim()||destAirport())||"&nbsp;"}</div></td><td><div class="lab">2. Date</div><div class="v">${fmtDate($('invDate').value)}</div></td><td><div class="lab">3. Entry No. &amp; Date</div><div class="v">&nbsp;</div></td></tr>
+      <tr><td colspan="2"><div class="lab">4. Name of Manufacturer</div><div class="v">${esc(mfr)||'<span class="verifyflag">[verify]</span>'}</div></td><td><div class="lab">5. City &amp; State of Manufacture</div><div class="v">${esc(city)||'<span class="verifyflag">[verify]</span>'}</div></td></tr>
       <tr><td><div class="lab">6. Reason for Return</div><div class="v">${esc($('usReason').value)||"For Repair"}</div></td>
         <td colspan="2"><div class="lab">7. U.S. Drawback Previously</div><div class="v chk">${chk($('usDrawback').value=='CLAIMED')} Claimed &nbsp; ${chk($('usDrawback').value=='UNCLAIMED')} Unclaimed</div>
         <div class="lab" style="margin-top:3px">8. Previously imported under HTSUS 9813.00.05?</div><div class="v chk">${chk($('usHts').value=='YES')} Yes &nbsp; ${chk($('usHts').value=='NO')} No</div></td></tr>
@@ -466,7 +806,7 @@ function foreignShipper(items){
   const ed=$('usExportDate').value;
   return `<div class="doc fs" data-doc="Foreign Shipper Declaration">
     <h2 class="title" style="font-size:17px;text-align:center;text-decoration:underline">Foreign Shipper's Declaration of U.S. Goods Returned</h2>
-    <p class="body">I, <span class="blank">${esc(declName())||"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"}</span>, declare that to the best of my knowledge and belief that the articles herein specified were exported from the United States, from the port of <span class="blank">${esc($('usPort').value)||"&nbsp;&nbsp;&nbsp;&nbsp;"}</span> on or about <span class="blank">${ed?fmtDate(ed):"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;, 20___"}</span>, and that they are returned without having been advanced in value or improved in condition by any process of manufacturing or other means.</p>
+    <p class="body">I, <span class="blank">${esc(declName())||"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"}</span>, declare that to the best of my knowledge and belief that the articles herein specified were exported from the United States, from the port of <span class="blank">${esc($('usPort').value.trim()||destAirport())||"&nbsp;&nbsp;&nbsp;&nbsp;"}</span> on or about <span class="blank">${ed?fmtDate(ed):"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;, 20___"}</span>, and that they are returned without having been advanced in value or improved in condition by any process of manufacturing or other means.</p>
     <table class="citab"><thead><tr><th>Marks</th><th>Number</th><th class="r">Quantity</th><th>Description</th><th class="r">Value (USD)</th></tr></thead><tbody>${rows}</tbody><tr><td colspan="4" class="r"><b>Total</b></td><td class="r"><b>${fmt(t.sub)}</b></td></tr></table>
     <div class="sigblock" style="margin-top:26px">
       <div class="fld"><div class="v">${fmtDate($('invDate').value)}</div><div class="cap">(Date)</div></div>
@@ -479,6 +819,9 @@ function foreignShipper(items){
 function refDisp(){const t1=$('refType').value,r1=$('refNo').value;return esc(!r1?'':(t1&&r1.toUpperCase().indexOf(t1)!==0?t1+' '+r1:r1));}
 function packingList(items){
   const rows=items.map((i,idx)=>`<tr><td class="r">${idx+1}</td><td>${esc(i.pn)}</td><td>${esc(i.sn)}</td><td>${esc(i.bn)}</td><td>${esc(i.desc)}</td><td>${esc(i.hs)}</td><td>${esc(i.origin)}</td><td class="r">${i.qty}</td></tr>`).join("");
+  const boxes=getBoxes();
+  const boxTable=boxes.length?('<div class="meta" style="margin-top:8px"><b>Packages (this shipment):</b></div><table class="citab"><thead><tr><th style="width:34px">#</th><th>Type</th><th class="r">Qty</th><th>Dimensions (cm)</th><th class="r">Gross wt (kg)</th></tr></thead><tbody>'+boxes.map((b,i)=>'<tr><td>'+(i+1)+'</td><td>'+esc(b.type)+'</td><td class="r">'+b.qty+'</td><td>'+(esc(b.dim)||'&mdash;')+'</td><td class="r">'+(b.wt?(b.qty*b.wt).toFixed(1):'&mdash;')+'</td></tr>').join('')+'</tbody></table>'):'';
+  const gw=grossTotal();
   return `<div class="doc" data-doc="Packing List">
     <div class="docdate">${fmtDate($('invDate').value)}</div>
     <img class="dlogo" src="${LOGO}">
@@ -489,17 +832,36 @@ function packingList(items){
       <td class="blk" style="padding-right:0"><b>Details</b><div class="l">${refDisp()||"&mdash;"}\nDestination: ${esc($('country').value)}${$('carrier').value?("\nCarrier: "+esc($('carrier').value)):""}</div></td>
     </tr></table>
     <table class="citab"><thead><tr><th>#</th><th>P/N</th><th>S/N</th><th>B/N</th><th>Description</th><th>HS code</th><th>Origin</th><th class="r">Qty</th></tr></thead><tbody>${rows}</tbody></table>
+    ${boxTable}
     <table class="totbox">
-      <tr><td>Total packages</td><td class="r">${esc($('boxes').value)||'1'}</td></tr>
-      <tr><td>Dimensions (cm)</td><td class="r">${esc($('boxDim').value)||'&mdash;'}</td></tr>
+      <tr><td>Total packages</td><td class="r">${esc(pkgCount())}</td></tr>
+      ${boxes.length?'':`<tr><td>Dimensions (cm)</td><td class="r">${esc($('boxDim').value)||'&mdash;'}</td></tr>`}
       <tr><td>Net weight</td><td class="r">${$('netWeight').value?esc($('netWeight').value)+' kg':'&mdash;'}</td></tr>
-      <tr class="grand"><td>Gross weight</td><td class="r">${$('weight').value?esc($('weight').value)+' kg':'&mdash;'}</td></tr>
+      <tr class="grand"><td>Gross weight</td><td class="r">${gw?gw.toFixed(1)+' kg':'&mdash;'}</td></tr>
     </table>
     ${$('pkgType').value?`<div class="meta">Packaging: ${esc($('pkgType').value)}${$('pkgTreat').value==='HT'?' — Heat treated (HT), ISPM 15':($('pkgTreat').value==='MB'?' — Fumigated (MB), ISPM 15':'')}</div>`:''}
     <div class="sigblock"><div class="fld"><div class="v" style="min-height:46px">${sigTag(46)}</div><div class="cap">${byName()?("<b>"+esc(byName())+"</b>"):"Authorised signature"}${byTitle()?(" &mdash; "+esc(byTitle())):""}<br>${esc(SENDER.company)} &nbsp;·&nbsp; Date: ${fmtDate($('invDate').value)}</div></div></div>
   </div>`;
 }
 function parseDims(s){const m=(s||'').match(/(\d+(?:[.,]\d+)?)\s*[x*×]\s*(\d+(?:[.,]\d+)?)\s*[x*×]\s*(\d+(?:[.,]\d+)?)/i);return m?{l:m[1].replace(',','.'),w:m[2].replace(',','.'),h:m[3].replace(',','.')}:null;}
+function addPalletRow(d){d=d||{};const tr=document.createElement('tr');
+  tr.innerHTML='<td><input class="pdim" placeholder="120*80*15"></td><td><input class="pmark" placeholder="SE – 1234 – HT"></td><td><button class="btn ghost sm del">✕</button></td>';
+  tr.querySelector('.pdim').value=d.dim||'';tr.querySelector('.pmark').value=d.mark||'';
+  tr.querySelector('.del').onclick=()=>{tr.remove();render();};
+  tr.querySelectorAll('input').forEach(i=>i.addEventListener('input',render));
+  $('palletBody').appendChild(tr);return tr;}
+function getPallets(){return [...$('palletBody').querySelectorAll('tr')].map(tr=>({dim:tr.querySelector('.pdim').value.trim(),mark:tr.querySelector('.pmark').value.trim()})).filter(p=>p.dim||p.mark);}
+function addBoxRow(d){d=d||{};const tr=document.createElement('tr');
+  tr.innerHTML='<td class="num"><input class="bxq" placeholder="1"></td><td><input class="bxt" placeholder="Box"></td><td><input class="bxd" placeholder="80*60*40"></td><td class="num"><input class="bxw" placeholder="0"></td><td><button class="btn ghost sm del">✕</button></td>';
+  tr.querySelector('.bxq').value=d.qty||'';tr.querySelector('.bxt').value=d.type||'';tr.querySelector('.bxd').value=d.dim||'';tr.querySelector('.bxw').value=d.wt||'';
+  tr.querySelector('.del').onclick=()=>{tr.remove();boxTotals();render();};
+  tr.querySelectorAll('input').forEach(i=>i.addEventListener('input',()=>{boxTotals();render();}));
+  $('boxBody').appendChild(tr);return tr;}
+function getBoxes(){return [...$('boxBody').querySelectorAll('tr')].map(tr=>({qty:parseFloat(tr.querySelector('.bxq').value)||1,type:tr.querySelector('.bxt').value.trim()||'Box',dim:tr.querySelector('.bxd').value.trim(),wt:parseFloat(tr.querySelector('.bxw').value)||0})).filter(b=>b.dim||b.wt);}
+function boxTotals(){const b=getBoxes();if(!b.length){$('boxTotals').textContent='';return;}const n=b.reduce((s,x)=>s+x.qty,0),w=b.reduce((s,x)=>s+x.qty*x.wt,0);$('boxTotals').textContent='Total: '+n+' package(s)'+(w?', '+w.toFixed(1)+' kg gross':'');}
+function pkgCount(){const b=getBoxes();return b.length?String(b.reduce((s,x)=>s+x.qty,0)):(($('boxes').value)||'1');}
+function grossTotal(){const b=getBoxes();const bw=b.reduce((s,x)=>s+x.qty*x.wt,0);return bw>0?bw:(parseFloat($('weight').value)||0);}
+function dimsSummary(){const b=getBoxes();if(b.length){return (b.length===1&&b[0].qty==1)?b[0].dim:(b.length+' package sizes — see packing list');}return $('boxDim').value;}
 function boxSVG(l,w,h,isPallet){
   const feet=isPallet?'<rect x="60" y="200" width="170" height="12" fill="#c9d6e0" stroke="#33485a" stroke-width="1"/><rect x="60" y="200" width="14" height="12" fill="#aebecb" stroke="#33485a" stroke-width="1"/><rect x="148" y="200" width="14" height="12" fill="#aebecb" stroke="#33485a" stroke-width="1"/><rect x="216" y="200" width="14" height="12" fill="#aebecb" stroke="#33485a" stroke-width="1"/>':'';
   return `<svg viewBox="0 0 360 236" width="100%" style="max-width:360px;border:1px solid #ddd;border-radius:6px;background:#fcfcfd">
@@ -535,38 +897,96 @@ function ippcSVG(cc,reg,tcode){
 function woodDecl(){
   const treat=$('pkgTreat').value; if(!treat) return '';
   const isHT=treat==='HT';
-  const pkg=$('pkgType').value||'Wooden packaging';
-  const isPallet=/pallet/i.test(pkg);
-  const units=esc($('pkgUnits').value)||'1';
-  const cc=(esc($('ippcCountry').value)||'CC').toUpperCase();
-  const reg=esc($('ippcReg').value)||'0000';
+  const pkg=$('pkgType').value||'Wooden pallet';
+  const isEpal=/epal/i.test(pkg);
+  const pallets=getPallets();
+  const units=pallets.length?String(pallets.length):(esc($('pkgUnits').value)||'1');
+  const cc=(esc($('ippcCountry').value)||'____').toUpperCase();
+  const reg=esc($('ippcReg').value)||'________';
   const tcode=isHT?'HT':'MB';
+  const treatName=isHT?'HT (Heat Treatment)':'MB (Methyl Bromide)';
+  const fullMark=cc+' – '+reg+' – '+tcode;
   const tdate=$('pkgDate').value?fmtDate($('pkgDate').value):fmtDate($('invDate').value);
   const dims=parseDims($('boxDim').value);
-  const gw=$('weight').value?esc($('weight').value)+' kg':'&mdash;';
-  const title='WOOD PACKAGING MATERIAL — ISPM 15 '+(isHT?'HEAT TREATMENT':'FUMIGATION')+' CERTIFICATE';
-  const method=isHT?'heat treated (HT) to a minimum wood core temperature of 56&nbsp;&deg;C for at least 30 minutes':'fumigated with methyl bromide (MB) in accordance with the prescribed dosage and exposure';
-  const box=boxSVG(dims?dims.l:'L',dims?dims.w:'W',dims?dims.h:'H',isPallet);
+  const dimStr=dims?(dims.l+' &times; '+dims.w+' &times; '+dims.h+' cm'):'To be completed';
+  const gw=$('weight').value?esc($('weight').value)+' kg':'To be completed';
+  const ref=refDisp();
+  const certNo=(ref?ref.replace(/[^\w]+/g,'-').replace(/^-|-$/g,''):('WPM-'+($('invDate').value||'').replace(/-/g,'')))+'-WPM';
+  const consignee=esc($('toCompany').value)||'To be completed';
   const mark=ippcSVG(cc,reg,tcode);
+  const palletsTable = pallets.length ? ('<div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#0f3a57;font-weight:700;margin:13px 0 4px">Pallets in this shipment ('+pallets.length+')</div><table class="citab"><thead><tr><th style="width:44px">#</th><th>Dimensions (cm)</th><th>IPPC mark</th><th>Treatment</th></tr></thead><tbody>'+pallets.map((p,i)=>'<tr><td>'+(i+1)+'</td><td>'+(esc(p.dim)||'&mdash;')+'</td><td>'+(esc(p.mark)||fullMark)+'</td><td>'+treatName+'</td></tr>').join('')+'</tbody></table>') : '';
+  const declN=byName(),declT=byTitle();
+  const annex=ANNEX_PHOTO?`<img src="${ANNEX_PHOTO}" style="max-width:100%;max-height:320px;border:1px solid #ccc;border-radius:4px">`:'<div style="border:1px dashed #bbb;border-radius:6px;padding:28px;text-align:center;color:#888;font-size:11px">Attach a clear photograph of the IPPC stamp on the pallet (upload it in the “Wood packaging” section on the left).</div>';
+  const H=s=>`<div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#0f3a57;font-weight:700;margin:13px 0 4px">${s}</div>`;
   return `<div class="doc" data-doc="ISPM15 Certificate">
-    <h2 class="title" style="font-size:16px;text-align:center;margin-top:0">${title}</h2>
-    <p style="font-size:12px;line-height:1.6">This is to certify that the wood packaging material described and illustrated below conforms to the <b>International Standard for Phytosanitary Measures No. 15 (ISPM 15 / IPPC)</b>. The wood is bark-free and has been <b>${method}</b>, and the packaging bears the official IPPC mark shown. The IPPC mark stamped on the wood packaging by the licensed treatment provider is the evidence of treatment.</p>
-    <table class="citab">
-      <tr><td style="width:40%"><b>Shipment reference</b></td><td>${refDisp()||'&mdash;'}</td></tr>
-      <tr><td><b>Destination country</b></td><td>${esc($('country').value)||'&mdash;'}</td></tr>
-      <tr><td><b>Packaging type</b></td><td>${esc(pkg)}</td></tr>
-      <tr><td><b>Outer dimensions (L &times; W &times; H)</b></td><td>${dims?(dims.l+' &times; '+dims.w+' &times; '+dims.h+' cm'):'&mdash; (enter box size)'}</td></tr>
-      <tr><td><b>Number of units</b></td><td>${units}</td></tr>
-      <tr><td><b>Gross weight</b></td><td>${gw}</td></tr>
-      <tr><td><b>Treatment method</b></td><td>${isHT?'Heat Treatment (HT)':'Methyl Bromide fumigation (MB)'} — ISPM 15</td></tr>
-      <tr><td><b>IPPC mark</b></td><td>${cc} &ndash; ${reg} &ndash; ${tcode}</td></tr>
-      <tr><td><b>Treatment / packing date</b></td><td>${tdate}</td></tr>
-    </table>
-    <table style="width:100%;border-collapse:collapse;margin-top:14px"><tr>
-      <td style="vertical-align:top;padding-right:18px"><div style="font-size:10px;text-transform:uppercase;color:#444;margin-bottom:4px">Packaging drawing</div>${box}</td>
-      <td style="vertical-align:top;width:236px"><div style="font-size:10px;text-transform:uppercase;color:#444;margin-bottom:4px">Official IPPC / ISPM 15 mark</div>${mark}<div style="font-size:10px;color:#666;margin-top:5px">The mark is applied on at least two opposite sides of each piece of wood packaging. Symbol shown is illustrative; the actual stamp on the packaging is the evidence.</div></td>
+    <table style="width:100%;border-collapse:collapse;border-bottom:2px solid #1577b8"><tr>
+      <td style="vertical-align:middle;padding-bottom:6px"><img src="${LOGO}" style="height:40px"></td>
+      <td style="vertical-align:middle;text-align:right;font-size:11px;color:#333;padding-bottom:6px">${esc(SENDER.company)}<br>${esc(SENDER.addr)}<br>EORI ${esc(SENDER.eori)} &nbsp;·&nbsp; ${esc(SENDER.email)}</td>
     </tr></table>
-    <div class="sigblock" style="margin-top:26px"><div class="fld"><div class="v" style="min-height:44px">${sigTag(44)}</div><div class="cap">${byName()?("<b>"+esc(byName())+"</b>"):"Signature"}${byTitle()?(" &mdash; "+esc(byTitle())):""} &nbsp;·&nbsp; Date: ${tdate}</div></div></div>
+    <div style="text-align:center;margin:14px 0 2px"><div style="font-size:18px;font-weight:700">WOOD PACKAGING MATERIAL CERTIFICATE</div>
+    <div style="font-size:13px;color:#0f3a57;font-weight:600">ISPM 15 / IPPC COMPLIANCE DECLARATION</div></div>
+    <table style="width:100%;font-size:11.5px;margin:8px 0"><tr><td><b>Certificate No.:</b> ${esc(certNo)}</td><td style="text-align:right"><b>Issue date:</b> ${fmtDate($('invDate').value)}</td></tr></table>
+    ${H('Shipment details')}
+    <table class="citab">
+      <tr><td style="width:42%"><b>Shipment reference</b></td><td>${ref||'&mdash;'}</td></tr>
+      <tr><td><b>Destination country</b></td><td>${esc($('country').value)||'&mdash;'}</td></tr>
+      <tr><td><b>Consignee</b></td><td>${consignee}</td></tr>
+      <tr><td><b>Packaging type</b></td><td>${esc(pkg)}</td></tr>
+      <tr><td><b>Number of pallets / units</b></td><td>${units}</td></tr>
+      <tr><td><b>Package dimensions (L &times; W &times; H)</b></td><td>${dimStr}</td></tr>
+      <tr><td><b>Gross weight</b></td><td>${gw}</td></tr>
+      <tr><td><b>Packing date</b></td><td>${tdate}</td></tr>
+      <tr><td><b>Commercial invoice no.</b></td><td>${ref||'To be completed'}</td></tr>
+      <tr><td><b>Packing list no.</b></td><td>${ref||'To be completed'}</td></tr>
+    </table>
+    ${H('Certification of wood packaging material')}
+    <p style="font-size:11.5px;line-height:1.6">This is to certify that the above shipment is packed using wood packaging material bearing a valid International Plant Protection Convention (IPPC) mark in accordance with the requirements of the International Standard for Phytosanitary Measures No. 15 (ISPM 15) — Regulation of Wood Packaging Material in International Trade.</p>
+    <p style="font-size:11.5px;line-height:1.6">The ${isEpal?'EPAL wooden pallet':'wood packaging'} utilised for this shipment carries a visible and permanent IPPC mark indicating that the wood packaging material has been treated through an approved phytosanitary treatment process and is authorised for use in international trade. <b>The details in this certificate have been recorded from, and verified against, the IPPC marking physically present on the packaging.</b> ISPM 15 compliance is evidenced by the official IPPC mark applied by an authorised treatment facility.</p>
+    <table style="width:100%;margin:6px 0"><tr>
+      <td style="vertical-align:top;font-size:11.5px;line-height:1.7">The IPPC mark identifies:<br>&bull; Official IPPC symbol (ear of wheat)<br>&bull; Country code<br>&bull; Registration / facility number<br>&bull; Treatment code (${tcode})</td>
+      <td style="width:230px;vertical-align:top">${mark}</td>
+    </tr></table>
+    ${H('Wood packaging identification')}
+    <table class="citab">
+      <tr><td style="width:42%"><b>Wood packaging type</b></td><td>${esc(pkg)}</td></tr>
+      <tr><td><b>Compliance standard</b></td><td>ISPM 15</td></tr>
+      <tr><td><b>Treatment method</b></td><td>${treatName}</td></tr>
+      <tr><td><b>IPPC country code</b></td><td>${cc}</td></tr>
+      <tr><td><b>Registration number</b></td><td>${reg}</td></tr>
+      <tr><td><b>Full IPPC mark</b></td><td>${fullMark}</td></tr>
+      <tr><td><b>Marking location</b></td><td>Physically marked on the pallet (at least two opposite sides)</td></tr>
+    </table>
+    ${palletsTable}
+    ${H('Phytosanitary compliance statement')}
+    <p style="font-size:11.5px;line-height:1.6">The wood packaging material used for the shipment referenced in this certificate bears an official IPPC mark and is identified as ${isHT?'heat-treated (HT)':'fumigated (MB)'} in accordance with ISPM 15 requirements. Under ISPM 15, wood packaging material must be manufactured from debarked wood and subjected to an approved treatment${isHT?'; heat treatment requires the wood core to reach a minimum temperature of 56 &deg;C for at least 30 minutes':''}, after which compliant material is marked with the internationally recognised IPPC mark. The details shown are based on verification of the IPPC marking present on the pallet used for packaging this shipment.</p>
+    ${H('Declaration for customs and agricultural authorities')}
+    <p style="font-size:11.5px;line-height:1.5;margin-bottom:4px">We hereby declare that:</p>
+    <ol style="font-size:11.5px;line-height:1.55;margin:0 0 6px 18px">
+      <li>The shipment is packed using ${isEpal?'an EPAL wooden pallet':'wood packaging'} bearing a visible IPPC mark.</li>
+      <li>The packaging is identified as ISPM 15 compliant based on the marking applied thereto.</li>
+      <li>The IPPC marking includes the treatment code ${tcode} and the relevant country and registration identification numbers.</li>
+      <li>To the best of our knowledge, the wood packaging material complies with the phytosanitary requirements applicable to international trade under ISPM 15.</li>
+    </ol>
+    <p style="font-size:11px;color:#555">This declaration is issued to support customs, plant health, agricultural inspection and import clearance procedures for the destination country.</p>
+    ${H('Pallet mark verification')}
+    <p style="font-size:11px;color:#555;margin-bottom:4px">Recorded directly from the IPPC mark present on the pallet:</p>
+    <table class="citab">
+      <tr><td style="width:42%"><b>Country code</b></td><td>${cc}</td></tr>
+      <tr><td><b>Registration number</b></td><td>${reg}</td></tr>
+      <tr><td><b>Treatment code</b></td><td>${tcode}</td></tr>
+      <tr><td><b>Full IPPC mark</b></td><td>${fullMark}</td></tr>
+    </table>
+    ${H('Exporter declaration')}
+    <p style="font-size:11.5px;line-height:1.6">I certify that the above information is true and correct to the best of my knowledge and has been recorded from the wood packaging material used for this shipment.</p>
+    <table style="width:100%;font-size:11.5px;margin-top:4px">
+      <tr><td style="padding:2px 0;width:42%"><b>Company</b></td><td>${esc(SENDER.company)}</td></tr>
+      <tr><td style="padding:2px 0"><b>Address</b></td><td>${esc(SENDER.addr)}</td></tr>
+      <tr><td style="padding:2px 0"><b>Telephone</b></td><td>${esc(SENDER.phone)}</td></tr>
+      <tr><td style="padding:2px 0"><b>Email</b></td><td>${esc(SENDER.email)}</td></tr>
+    </table>
+    <div class="sigblock" style="margin-top:16px"><div class="fld"><div class="v" style="min-height:44px">${sigTag(44)}</div><div class="cap">Authorised signatory<br>Name: ${declN?esc(declN):'__________________________'}<br>Position: ${declT?esc(declT):'__________________________'}<br>Date: ${fmtDate($('invDate').value)}</div></div></div>
+    ${H('Annex A — Photograph of IPPC mark on the pallet')}
+    ${annex}
   </div>`;
 }
 function render(){
@@ -580,25 +1000,30 @@ function render(){
   if(r==='eu'){banner.className='banner none noprint';banner.innerHTML='✓ <b>EU destination — no customs invoice required.</b> Ship with the AWB from your booking only.';prev.innerHTML='<div class="placeholder"><div class="big">No customs document required</div>'+esc($('country').value)+' is within the EU — only the Air Waybill (AWB) is needed.</div>';return;}
   const wantPL=$('pkgList').checked||r==='br';
   const wd=woodDecl();
+  const nonUS=items.filter(i=>i.origin && !/united states|u\.?s\.?a?\.?$|^us$/i.test(i.origin));
+  const usDecls = $('usDecls') ? $('usDecls').checked : true;
   let docs=[commercialInvoice(items)];
-  if(r==='usa'){docs.push(cbp3311(items));docs.push(foreignShipper(items));}
+  if(r==='usa'&&usDecls){docs.push(cbp3311(items));docs.push(foreignShipper(items));}
   if(wantPL)docs.push(packingList(items));
   if(wd)docs.push(wd);
   prev.innerHTML=docs.join('');
   const extra=(wantPL?' · Packing List':'')+(wd?' · ISPM 15 declaration':'');
+  const originWarn = nonUS.length ? ' <span class="verifyflag">Note: '+esc(nonUS[0].origin)+'-origin goods — the CBP 3311 / Foreign Shipper forms are for US-made goods; verify these apply or untick them.</span>' : '';
   if(!r){banner.className='banner idle noprint';banner.innerHTML='Select a destination country (or upload an order that includes it) to choose the right documents.';}
-  else if(r==='usa'){banner.className='banner docs noprint';banner.innerHTML='⚠ <b>USA:</b> Customs Invoice · CBP Form 3311 · Foreign Shipper’s Declaration'+extra+'.';}
+  else if(r==='usa'){banner.className='banner docs noprint';banner.innerHTML='⚠ <b>USA:</b> Customs Invoice'+(usDecls?' · CBP Form 3311 · Foreign Shipper’s Declaration':' (US declarations unticked)')+extra+'.'+originWarn;}
   else if(r==='br'){banner.className='banner docs noprint';banner.innerHTML='⚠ <b>BRAZIL — detailed customs.</b> Customs Invoice + Packing List'+(wd?' + ISPM 15 declaration':'')+'. Fill HS/NCM code, net &amp; gross weight, carrier &amp; transport value'+(wd?'':' — and add wood-packaging treatment if shipping on a pallet/crate')+'.';}
   else{banner.className='banner docs noprint';banner.innerHTML='⚠ <b>Customs Invoice required</b> for '+esc($('country').value)+extra+'.';}
 }
-function updateCountryUI(){const r=region();$('usaBox').classList.toggle('show',r==='usa');if(r==='br')$('pkgList').checked=true;$('countryHint').textContent={'':'',eu:"EU — only the AWB is needed.",ci:"Customs Invoice required.",usa:"Customs Invoice + 2 US declarations required.",br:"Brazil — Customs Invoice + Packing List + ISPM 15 if wooden packaging."}[r];applyAirport();}
+function updateCountryUI(){const r=region();$('usaBox').classList.toggle('show',r==='usa');if(r==='br')$('pkgList').checked=true;$('countryHint').textContent={'':'',eu:"EU — only the AWB is needed.",ci:"Customs Invoice required.",usa:"Customs Invoice + 2 US declarations required.",br:"Brazil — Customs Invoice + Packing List + ISPM 15 if wooden packaging."}[r];$('airportList').innerHTML=airportOptions($('country').value);applyAirport();}
 function resetAll(){
   $('itemBody').innerHTML='';addRow();
   ['refNo','refType','toCompany','toAddress','toContact','toEmail','custId','reason','byName','byTitle','boxDim','weight','netWeight','boxes','carrier','destAirport','freight','insurance','taxrate','handling','ippcCountry','ippcReg','pkgUnits','usMfr','usMfrCity','usPort','usEntryPort','usReason','usDeclName'].forEach(id=>$(id).value='');
-  $('usExportDate').value='';$('country').value='';$('pkgType').value='';$('pkgTreat').value='';$('pkgDate').value='';$('pkgList').checked=false;
+  $('usExportDate').value='';$('country').value='';$('pkgType').value='';$('pkgTreat').value='';$('pkgDate').value='';$('pkgList').checked=false;$('usDecls').checked=true;$('palletBody').innerHTML='';
+  ANNEX_PHOTO='';$('stampPhoto').value='';$('stampStatus').textContent='';
   $('parseStatus').className='hint';$('parseStatus').textContent='All fields cleared. Upload an order to begin.';
-  delete $('usExportDate').dataset.touched;syncDates();
-  $('fillStatus').textContent='';updateCountryUI();render();
+  delete $('usExportDate').dataset.touched;delete $('destAirport').dataset.touched;delete $('usEntryPort').dataset.touched;syncDates();
+  $('boxBody').innerHTML='';if($('boxTotals'))$('boxTotals').textContent='';
+  $('fillStatus').textContent='';if($('airportStatus'))$('airportStatus').textContent='';updateCountryUI();render();
 }
 
 window.addEventListener('DOMContentLoaded',()=>{
@@ -609,6 +1034,10 @@ window.addEventListener('DOMContentLoaded',()=>{
   addRow();syncDates();
   $('invDate').addEventListener('input',()=>{syncDates();render();});
   $('usExportDate').addEventListener('input',function(){this.dataset.touched='1';});
+  $('addPallet').onclick=()=>addPalletRow();
+  $('addBox').onclick=()=>addBoxRow();
+  $('destAirport').addEventListener('input',function(){this.dataset.touched='1';});
+  $('usEntryPort').addEventListener('input',function(){this.dataset.touched='1';});
   const lib=loadLib();$('libStatus').textContent=Object.keys(lib).length?(Object.keys(lib).length+' part(s) added to library.'):'';
   $('addRow').onclick=()=>addRow();
   $('copyVal').onclick=copyValueToAll;
@@ -622,12 +1051,12 @@ window.addEventListener('DOMContentLoaded',()=>{
   dz.addEventListener('drop',e=>{if(e.dataTransfer.files.length)parseFiles(e.dataTransfer.files);});
   $('genBtn').onclick=render;
   $('printBtn').onclick=()=>{render();setTimeout(()=>window.print(),60);};
-  $('country').onchange=()=>{updateCountryUI();render();};
+  $('country').onchange=()=>{updateCountryUI();resolveNearestAirport();render();};
   $('currency').onchange=()=>{LS.set('amapolaCur',cur());render();};
   ['refNo','invDate','toCompany','toAddress','toContact','toEmail','custId','reason','byName','byTitle','boxDim','weight','netWeight','boxes','carrier','destAirport','freight','insurance','taxrate','handling','ippcCountry','ippcReg','pkgUnits'].forEach(id=>$(id).addEventListener('input',render));
   ['usMfr','usMfrCity','usPort','usExportDate','usEntryPort','usReason','usDrawback','usHts','usDeclName'].forEach(id=>$(id).addEventListener('input',render));
-  ['pkgType','pkgTreat','pkgDate','pkgList'].forEach(id=>$(id).addEventListener('change',render));
-  $('toAddress').addEventListener('input',applyAirport);
+  ['pkgType','pkgTreat','pkgDate','pkgList','usDecls'].forEach(id=>$(id).addEventListener('change',render));
+  $('toAddress').addEventListener('input',()=>{applyAirport();scheduleGeo();});
   // ---- signature pad ----
   (function(){
     const cv=$('sigPad'); if(!cv) return;
@@ -647,6 +1076,8 @@ window.addEventListener('DOMContentLoaded',()=>{
     $('sigFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{loadSig(rd.result);$('sigStatus').textContent='Signature image loaded — click Save to keep it.';};rd.readAsDataURL(f);e.target.value='';};
     $('sigSave').onclick=()=>{if(!SIGNATURE){$('sigStatus').textContent='Draw or upload a signature first.';return;}LS.set('amapolaSig',SIGNATURE);$('sigStatus').textContent='✓ Signature saved in this browser.';};
   })();
+  // Annex A — IPPC stamp photo
+  $('stampPhoto').onchange=e=>{const f=e.target.files[0];if(!f){return;}const rd=new FileReader();rd.onload=()=>{ANNEX_PHOTO=rd.result;$('stampStatus').textContent='✓ Stamp photo added as Annex A.';render();};rd.readAsDataURL(f);};
   $('saveParts').onclick=()=>{const lib=loadLib();let n=0;getItems().forEach(i=>{if(i.pn){lib[i.pn.toUpperCase()]={mfr:i.mfr,origin:i.origin,city:i.city,hs:i.hs};n++;}});saveLib(lib);$('libStatus').textContent='Saved '+n+' part(s). '+Object.keys(lib).length+' in added library.';};
   $('clearLib').onclick=()=>{LS.del('amapolaParts');$('libStatus').textContent='Added library cleared (seed parts remain).';};
   updateCountryUI();render();
