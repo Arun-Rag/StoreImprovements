@@ -666,7 +666,8 @@ function applyShipments(list){
   $('itemBody').innerHTML='';
   let n=0;
   list.forEach(d=>(d.lines||[]).forEach(l=>{
-    const tr=addRow({pn:l.part_no,sn:l.serial_no,bn:l.batch_no,desc:l.description,qty:(l.qty||''),src:'amicos'});
+    const tr=addRow({pn:l.part_no,sn:l.serial_no,bn:l.batch_no,desc:l.description,qty:(l.qty||''),
+                     val:(l.unit_value!=null?l.unit_value:''),src:'amicos'});   // proforma value from AMICOS (SO/SM/CO), editable
     autoFromLib(tr);                                              // HS + origin from the parts library
     if(!tr.querySelector('.hs').value) tr.querySelector('.hs').value=DEFAULT_HS; // else Amapola's aircraft-parts tariff
     n++;
@@ -725,7 +726,20 @@ const COUNTRY_AIRPORTS={
   "Uganda":[["Entebbe","EBB",0.04,32.44]],"Zambia":[["Lusaka","LUN",-15.33,28.45],["Ndola","NLA",-12.99,28.66]],
   "Brazil":[["São Paulo–Guarulhos","GRU",-23.43,-46.47],["São Paulo (Congonhas)","CGH",-23.63,-46.66],["Campinas (Viracopos)","VCP",-23.01,-47.13],["Rio de Janeiro","GIG",-22.81,-43.25],["Belo Horizonte","CNF",-19.63,-43.97],["Brasília","BSB",-15.87,-47.92],["Curitiba","CWB",-25.53,-49.17],["Porto Alegre","POA",-29.99,-51.17],["Recife","REC",-8.13,-34.92],["Salvador","SSA",-12.91,-38.33],["Manaus","MAO",-3.04,-60.05],["Fortaleza","FOR",-3.78,-38.53]],
   "Mexico":[["Mexico City","MEX",19.44,-99.07],["Guadalajara","GDL",20.52,-103.31],["Monterrey","MTY",25.78,-100.11]],
-  "United Arab Emirates":[["Dubai","DXB",25.25,55.36],["Abu Dhabi","AUH",24.43,54.65],["Sharjah","SHJ",25.33,55.52]]
+  "United Arab Emirates":[["Dubai","DXB",25.25,55.36],["Abu Dhabi","AUH",24.43,54.65],["Sharjah","SHJ",25.33,55.52]],
+  "Canada":[["Toronto","YYZ",43.68,-79.63],["Montreal","YUL",45.47,-73.74],["Vancouver","YVR",49.19,-123.18],["Calgary","YYC",51.11,-114.02],["Ottawa","YOW",45.32,-75.67],["Winnipeg","YWG",49.91,-97.24],["Halifax","YHZ",44.88,-63.51],["Edmonton","YEG",53.31,-113.58],["Charlottetown","YYG",46.29,-63.13]],
+  "Singapore":[["Singapore","SIN",1.36,103.99]],
+  "India":[["Delhi","DEL",28.56,77.10],["Mumbai","BOM",19.09,72.87],["Bengaluru","BLR",13.20,77.71],["Chennai","MAA",12.99,80.17],["Hyderabad","HYD",17.24,78.43],["Kolkata","CCU",22.65,88.45]],
+  "China":[["Beijing","PEK",40.08,116.58],["Shanghai (Pudong)","PVG",31.14,121.81],["Guangzhou","CAN",23.39,113.30],["Shenzhen","SZX",22.64,113.81],["Chengdu","CTU",30.58,103.95]],
+  "Hong Kong":[["Hong Kong","HKG",22.31,113.92]],
+  "Japan":[["Tokyo (Narita)","NRT",35.77,140.39],["Tokyo (Haneda)","HND",35.55,139.78],["Osaka (Kansai)","KIX",34.43,135.24],["Nagoya","NGO",34.86,136.81]],
+  "South Korea":[["Seoul (Incheon)","ICN",37.46,126.44],["Busan","PUS",35.18,128.94]],
+  "Malaysia":[["Kuala Lumpur","KUL",2.75,101.71],["Penang","PEN",5.30,100.27]],
+  "Australia":[["Sydney","SYD",-33.95,151.18],["Melbourne","MEL",-37.67,144.84],["Brisbane","BNE",-27.38,153.12],["Perth","PER",-31.94,115.97]],
+  "New Zealand":[["Auckland","AKL",-37.01,174.79],["Christchurch","CHC",-43.49,172.53],["Wellington","WLG",-41.33,174.81]],
+  "Qatar":[["Doha","DOH",25.27,51.61]],
+  "Saudi Arabia":[["Riyadh","RUH",24.96,46.70],["Jeddah","JED",21.68,39.16],["Dammam","DMM",26.47,49.80]],
+  "Israel":[["Tel Aviv","TLV",32.01,34.89]]
 };
 // city -> "Name (CODE)" derived from the above, plus neighbouring-city shortcuts
 const CITY_ALL={};
@@ -757,7 +771,7 @@ function usZip3Airport(z){
 }
 function destAirport(){
   const up=$('toAddress').value.toUpperCase();
-  for(const k of CITY_KEYS){ if(up.indexOf(k)>=0) return CITY_ALL[k]; }   // 1) a known consignee city / neighbour
+  for(const k of CITY_KEYS){ if(new RegExp('(^|[^A-Z])'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'([^A-Z]|$)').test(up)) return CITY_ALL[k]; }   // 1) known consignee city — whole-word match (so CHARLOTTETOWN ≠ Charlotte)
   const c=$('country').value;
   if(c==='United States'){
     const zm=up.match(/\b(\d{5})(?:-\d{4})?\b/);                          // 2) US ZIP (precise, offline)
@@ -882,7 +896,7 @@ function totals(items){const sub=items.reduce((s,i)=>s+i.qty*i.val,0);const tax=
 function commercialInvoice(items){
   const t=totals(items);
   const rows=items.map(i=>`<tr><td>${esc(i.pn)}</td><td>${esc(i.sn)}</td><td>${esc(i.bn)}</td><td>${esc(i.desc)}</td><td>${esc(i.hs)}</td><td>${esc(i.origin)}</td><td class="r">${i.qty}</td><td class="r">${fmt(i.val)}</td><td class="r">${fmt(i.qty*i.val)}</td></tr>`).join("");
-  const ship=[];ship.push(esc(pkgCount())+" package(s)");const _ds=dimsSummary();if(_ds)ship.push(/see packing list/.test(_ds)?esc(_ds):("Dim "+esc(_ds)+" cm"));if($('netWeight').value)ship.push("Net "+esc($('netWeight').value)+" kg");const _gw=grossTotal();if(_gw)ship.push("Gross "+_gw.toFixed(1)+" kg");if($('carrier').value)ship.push("Carrier: "+esc($('carrier').value));if($('destAirport').value)ship.push("Airport: "+esc($('destAirport').value));if($('pkgType').value)ship.push("Pkg: "+esc($('pkgType').value)+($('pkgTreat').value?(" / "+$('pkgTreat').value):""));if($('handling').value)ship.push("<b>"+esc($('handling').value)+"</b>");
+  const ship=[];ship.push(esc(pkgCount())+" package(s)");const _bx=getBoxes();if(_bx.length&&(_bx.length>1||_bx[0].qty>1)){ship.push("Packages: "+esc(_bx.map(x=>(x.qty>1?(x.qty+'× '):'')+x.type+(x.dim?(' '+x.dim):'')+(x.wt?(' @'+x.wt+'kg'):'')).join('; ')));}else{const _ds=dimsSummary();if(_ds)ship.push("Dim "+esc(_ds)+" cm");}if($('netWeight').value)ship.push("Net "+esc($('netWeight').value)+" kg");const _gw=grossTotal();if(_gw)ship.push("Gross "+_gw.toFixed(1)+" kg");if($('carrier').value)ship.push("Carrier: "+esc($('carrier').value));if($('destAirport').value)ship.push("Airport: "+esc($('destAirport').value));if($('pkgType').value)ship.push("Pkg: "+esc($('pkgType').value)+($('pkgTreat').value?(" / "+$('pkgTreat').value):""));if($('handling').value)ship.push("<b>"+esc($('handling').value)+"</b>");
   const retDate=addMonths($('invDate').value,4);
   const t1=$('refType').value,r1=$('refNo').value,refDisp=esc(!r1?'':(t1&&r1.toUpperCase().indexOf(t1)!==0?t1+' '+r1:r1));
   return `<div class="doc" data-doc="Commercial Invoice">
@@ -1252,6 +1266,10 @@ function updateReadiness(){
       act:'<label><input type="checkbox" id="dgAck" '+(ack?'checked':'')+'> DG reviewed (classified or not applicable)</label>'}); }
   const gross=(typeof grossTotal==='function')?grossTotal():0;
   if(!gross) issues.push({sev:'warn',txt:'Gross weight not entered — needed for the carrier booking / chargeable weight.'});
+  const boxesR=(typeof getBoxes==='function')?getBoxes():[];
+  const anyDim=($('boxDim')&&$('boxDim').value.trim())||boxesR.some(b=>b.dim);
+  if(!anyDim) issues.push({sev:'warn',txt:'Package dimensions not entered — needed for volumetric / chargeable weight. Use “Add box / pallet” for several boxes.'});
+  else if(boxesR.some(b=>b.wt && !b.dim)) issues.push({sev:'warn',txt:'A package has a weight but no L×W×H — add its dimensions.'});
   if(AM_ADDRCHECK && hasAmicos){
     if(AM_ADDRCHECK.block) issues.push({sev:'block',txt:'Orders do <b>not</b> share one ship-to: '+AM_ADDRCHECK.rows.filter(x=>x[2]!=='ok').map(x=>esc(x[0])+' — '+esc(x[1])).join('; ')+'. One customs invoice = one consignee.'});
     else if(AM_ADDRCHECK.warn) issues.push({sev:'warn',txt:'Consignee address differs across orders: '+AM_ADDRCHECK.rows.filter(x=>x[2]==='warn').map(x=>esc(x[0])+' — '+esc(x[1])).join('; ')+'.'});
@@ -1313,7 +1331,31 @@ function updateBooking(){
   if(acct) rows.push(['Carrier account', esc(acct)]);
   $('bookSummary').innerHTML=rows.map(r=>'<div class="r"><b>'+r[0]+'</b><span>'+r[1]+'</span></div>').join('');
 }
-function updateCountryUI(){const r=region();$('usaBox').classList.toggle('show',r==='usa');if(r==='br')$('pkgList').checked=true;$('countryHint').textContent={'':'',eu:"EU — only the AWB is needed.",ci:"Customs Invoice required.",usa:"Customs Invoice + 2 US declarations required.",br:"Brazil — Customs Invoice + Packing List + ISPM 15 if wooden packaging."}[r];$('airportList').innerHTML=airportOptions($('country').value);applyAirport();}
+// CBP 3311 / Foreign Shipper manufacturer + city: aggregate from the parts library across
+// ALL line items (verified master data — never fabricated). If the parts aren't in the
+// library the fields stay "[verify]" rather than being guessed. Operator-editable.
+function fillUsManufacturer(){
+  if(region()!=='usa') return;
+  const mfrs=new Set(), cities=new Set();
+  [...$('itemBody').querySelectorAll('tr')].forEach(tr=>{
+    const pn=(tr.querySelector('.pn').value||'').trim(); if(!pn) return;
+    const hit=libLookup(pn)||{}; const m=tr.dataset.mfr||hit.mfr||'', c=tr.dataset.city||hit.city||'';
+    if(m)mfrs.add(m); if(c)cities.add(c);
+  });
+  if(mfrs.size && !$('usMfr').dataset.touched) $('usMfr').value=[...mfrs].join('; ');
+  if(cities.size && !$('usMfrCity').dataset.touched) $('usMfrCity').value=[...cities].join('; ');
+}
+// Learn a typed manufacturer/city back onto the part — but only when there is exactly one
+// part on the shipment, so it can never be attributed to the wrong P/N.
+function learnUsManufacturer(){
+  const rows=[...$('itemBody').querySelectorAll('tr')].filter(tr=>tr.querySelector('.pn').value.trim());
+  if(rows.length!==1) return;
+  const tr=rows[0], pn=(tr.querySelector('.pn').value||'').toUpperCase().trim(); if(!pn) return;
+  const m=$('usMfr').value.trim(), c=$('usMfrCity').value.trim(); if(!m && !c) return;
+  tr.dataset.mfr=m||tr.dataset.mfr; tr.dataset.city=c||tr.dataset.city;
+  const lib=loadLib(), cur=lib[pn]||{}; lib[pn]=Object.assign({},cur,{mfr:m||cur.mfr||'', city:c||cur.city||''}); saveLib(lib);
+}
+function updateCountryUI(){const r=region();$('usaBox').classList.toggle('show',r==='usa');if(r==='br')$('pkgList').checked=true;$('countryHint').textContent={'':'',eu:"EU — only the AWB is needed.",ci:"Customs Invoice required.",usa:"Customs Invoice + 2 US declarations required.",br:"Brazil — Customs Invoice + Packing List + ISPM 15 if wooden packaging."}[r];$('airportList').innerHTML=airportOptions($('country').value);applyAirport();if(typeof fillUsManufacturer==='function')fillUsManufacturer();}
 function resetAll(){
   SHIP_ID='';AM_ADDRCHECK=null;
   $('itemBody').innerHTML='';addRow();
@@ -1354,7 +1396,8 @@ window.addEventListener('DOMContentLoaded',()=>{
   $('country').onchange=()=>{updateCountryUI();resolveNearestAirport();render();};
   $('currency').onchange=()=>{LS.set('amapolaCur',cur());render();};
   ['refNo','invDate','toCompany','toAddress','toContact','toEmail','custId','reason','byName','byTitle','boxDim','weight','netWeight','boxes','carrier','destAirport','freight','insurance','taxrate','handling','ippcCountry','ippcReg','pkgUnits'].forEach(id=>$(id).addEventListener('input',render));
-  ['usMfr','usMfrCity','usPort','usExportDate','usEntryPort','usReason','usDrawback','usHts','usDeclName'].forEach(id=>$(id).addEventListener('input',render));
+  ['usPort','usExportDate','usEntryPort','usReason','usDrawback','usHts','usDeclName'].forEach(id=>$(id).addEventListener('input',render));
+  ['usMfr','usMfrCity'].forEach(id=>$(id).addEventListener('input',function(){this.dataset.touched='1';learnUsManufacturer();render();}));
   ['pkgType','pkgTreat','pkgDate','pkgList','usDecls'].forEach(id=>$(id).addEventListener('change',render));
   $('toAddress').addEventListener('input',()=>{applyAirport();scheduleGeo();});
   // ---- signature pad ----
