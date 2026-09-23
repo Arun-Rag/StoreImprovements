@@ -104,6 +104,20 @@
   .amnote{white-space:pre-wrap;font-size:11px;color:#41505b;background:#f7fafc;border:1px solid var(--line);border-radius:6px;padding:6px 8px;margin-top:6px;max-height:120px;overflow:auto}
   .amset{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);display:none}
   .amset.show{display:block}
+  /* --- Carrier booking guidance --- */
+  #bookCard h2{display:flex;align-items:center;gap:8px}
+  .bookbtns{display:flex;gap:8px;margin-top:9px}
+  .btn.book{flex:1;justify-content:center;color:#fff;text-decoration:none;font-weight:700;border:0}
+  .btn.book.fedex{background:#4d148c} .btn.book.dhl{background:#d40511;color:#ffcc00} .btn.book.tnt{background:#ff6600}
+  .btn.book.rec{box-shadow:0 0 0 3px #ffd54a}
+  .booksum{margin-top:9px;border:1px solid var(--line);border-radius:6px;background:#f7fafc;font-size:11.5px;overflow:hidden}
+  .booksum .r{display:flex;justify-content:space-between;gap:10px;padding:4px 9px;border-bottom:1px solid #eef2f5}
+  .booksum .r:last-child{border-bottom:0}
+  .booksum .r b{color:var(--dark);font-weight:600;white-space:nowrap}
+  .booksum .r span{text-align:right;color:#41505b}
+  .booksum .r span.warn{color:#b06b00;font-weight:600}
+  .bookchk{margin-top:8px;font-size:11px;color:var(--muted);padding-left:16px}
+  .bookchk li{margin:2px 0}
   @media print{
     body{background:#fff}.wrap{max-width:none;padding:0}.noprint{display:none!important}.layout{display:block}.preview{gap:0}
     .doc{border:0;border-radius:0;box-shadow:none;padding:12mm 14mm;page-break-after:always}.doc:last-child{page-break-after:auto}
@@ -134,9 +148,10 @@
                 <option value="LO">LO — Loan out</option>
               </select>
             </div>
-            <div><label>Order number</label><input id="amNo" placeholder="e.g. 662259" inputmode="numeric" autocomplete="off"></div>
+            <div><label>Order number(s)</label><input id="amNo" placeholder="e.g. 662317, 662316, 662318" autocomplete="off"></div>
           </div>
-          <button class="btn primary sm addrow" id="amLoad" style="width:100%;margin-top:8px">⤓ Load shipment from AMICOS</button>
+          <div class="hint" style="margin-top:4px">Enter one number, or several separated by commas/spaces — they combine into one invoice. A number may carry its own type (e.g. <b>SO662000</b>).</div>
+          <button class="btn primary sm addrow" id="amLoad" style="width:100%;margin-top:8px">⤓ Load shipment(s) from AMICOS</button>
           <label style="margin-top:11px">Or search recent shipments</label>
           <input id="amSearch" placeholder="order no · customer · part · tail" autocomplete="off">
           <div class="amgrid" id="amResults"></div>
@@ -291,6 +306,22 @@
         </div>
         <div class="hint" id="libStatus"></div>
       </div>
+
+      <div class="card noprint" id="bookCard" style="display:none">
+        <h2><span>📦 Book the collection</span></h2>
+        <div class="hint" id="bookHint">Invoice ready — book the pickup with your carrier, then hand over the printed documents.</div>
+        <div class="bookbtns">
+          <a class="btn book fedex" id="bookFedex" href="https://www.fedex.com/en-us/shipping.html" target="_blank" rel="noopener">FedEx</a>
+          <a class="btn book dhl" id="bookDhl" href="https://mydhl.express.dhl/" target="_blank" rel="noopener">DHL</a>
+          <a class="btn book tnt" id="bookTnt" href="https://mytnt.tnt.com/" target="_blank" rel="noopener">TNT</a>
+        </div>
+        <div class="booksum" id="bookSummary"></div>
+        <ul class="bookchk">
+          <li>Attach the <b>Customs Invoice</b> (Print / Save as PDF) to the booking.</li>
+          <li>For serviceable parts, add the <b>EASA F1 / FAA 8130-3</b> certificate.</li>
+          <li>Put the <b>AWB number</b> back on the order in AMICOS after booking.</li>
+        </ul>
+      </div>
     </div>
 
     <div>
@@ -310,7 +341,7 @@
 const SENDER={company:"Amapola Flyg AB",addr:"PO Box 57, 230 32 Malmö-Sturup, Sweden",hangar:"Hangarvägen 8, 233 71 Malmö-Sturup, Sweden",eori:"SE5564136595",tariff:"88073000",contact:"Arun Raghavan",title:"Rotable Controller",phone:"+46 761 469012",email:"arun.raghavan@amapola.nu"};
 const LOGO="data:image/png;base64,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";
 const CURRENCIES=["USD","EUR","GBP","SEK","NOK","DKK","CHF","CAD","AED","SGD"];
-const COUNTRIES=[["Austria","eu"],["Belgium","eu"],["Bulgaria","eu"],["Croatia","eu"],["Cyprus","eu"],["Czechia","eu"],["Denmark","eu"],["Estonia","eu"],["Finland","eu"],["France","eu"],["Germany","eu"],["Greece","eu"],["Hungary","eu"],["Ireland","eu"],["Italy","eu"],["Latvia","eu"],["Lithuania","eu"],["Luxembourg","eu"],["Malta","eu"],["Netherlands","eu"],["Poland","eu"],["Portugal","eu"],["Romania","eu"],["Slovakia","eu"],["Slovenia","eu"],["Spain","eu"],["Sweden","eu"],["Norway (OSL)","ci"],["United Kingdom","ci"],["Switzerland","ci"],["Iceland","ci"],["Turkey","ci"],["Serbia","ci"],["United States","usa"],["Algeria","ci"],["Angola","ci"],["Egypt","ci"],["Ethiopia","ci"],["Ghana","ci"],["Kenya","ci"],["Morocco","ci"],["Nigeria","ci"],["Rwanda","ci"],["Senegal","ci"],["South Africa","ci"],["Tanzania","ci"],["Tunisia","ci"],["Uganda","ci"],["Zambia","ci"],["Brazil","br"],["Mexico","ci"],["United Arab Emirates","ci"],["Other non-EU country","ci"]];
+const COUNTRIES=[["Austria","eu"],["Belgium","eu"],["Bulgaria","eu"],["Croatia","eu"],["Cyprus","eu"],["Czechia","eu"],["Denmark","eu"],["Estonia","eu"],["Finland","eu"],["France","eu"],["Germany","eu"],["Greece","eu"],["Hungary","eu"],["Ireland","eu"],["Italy","eu"],["Latvia","eu"],["Lithuania","eu"],["Luxembourg","eu"],["Malta","eu"],["Netherlands","eu"],["Poland","eu"],["Portugal","eu"],["Romania","eu"],["Slovakia","eu"],["Slovenia","eu"],["Spain","eu"],["Sweden","eu"],["Norway (OSL)","ci"],["United Kingdom","ci"],["Switzerland","ci"],["Iceland","ci"],["Turkey","ci"],["Serbia","ci"],["United States","usa"],["Algeria","ci"],["Angola","ci"],["Egypt","ci"],["Ethiopia","ci"],["Ghana","ci"],["Kenya","ci"],["Morocco","ci"],["Nigeria","ci"],["Rwanda","ci"],["Senegal","ci"],["South Africa","ci"],["Tanzania","ci"],["Tunisia","ci"],["Uganda","ci"],["Zambia","ci"],["Brazil","br"],["Mexico","ci"],["Canada","ci"],["United Arab Emirates","ci"],["Qatar","ci"],["Saudi Arabia","ci"],["Israel","ci"],["Singapore","ci"],["India","ci"],["China","ci"],["Hong Kong","ci"],["Japan","ci"],["South Korea","ci"],["Malaysia","ci"],["Australia","ci"],["New Zealand","ci"],["Other non-EU country","ci"]];
 const AIRPORTS={"Norway (OSL)":"Oslo Gardermoen (OSL)","United Kingdom":"London Heathrow (LHR)","Switzerland":"Zürich (ZRH)","Iceland":"Keflavík (KEF)","Turkey":"Istanbul (IST)","Serbia":"Belgrade (BEG)","Algeria":"Algiers (ALG)","Angola":"Luanda (LAD)","Egypt":"Cairo (CAI)","Ethiopia":"Addis Ababa (ADD)","Ghana":"Accra (ACC)","Kenya":"Nairobi (NBO)","Morocco":"Casablanca (CMN)","Nigeria":"Lagos (LOS)","Rwanda":"Kigali (KGL)","Senegal":"Dakar (DSS)","South Africa":"Johannesburg (JNB)","Tanzania":"Dar es Salaam (DAR)","Tunisia":"Tunis (TUN)","Uganda":"Entebbe (EBB)","Zambia":"Lusaka (LUN)","Brazil":"São Paulo–Guarulhos (GRU)","Mexico":"Mexico City (MEX)","United Arab Emirates":"Dubai (DXB)"};
 const US_STATE_AIRPORT={AL:"Birmingham (BHM)",AK:"Anchorage (ANC)",AZ:"Phoenix (PHX)",AR:"Little Rock (LIT)",CA:"Los Angeles (LAX)",CO:"Denver (DEN)",CT:"Hartford (BDL)",DE:"Philadelphia (PHL)",DC:"Washington (IAD)",FL:"Miami (MIA)",GA:"Atlanta (ATL)",HI:"Honolulu (HNL)",ID:"Boise (BOI)",IL:"Chicago (ORD)",IN:"Indianapolis (IND)",IA:"Des Moines (DSM)",KS:"Wichita (ICT)",KY:"Louisville (SDF)",LA:"New Orleans (MSY)",ME:"Portland ME (PWM)",MD:"Baltimore (BWI)",MA:"Boston (BOS)",MI:"Detroit (DTW)",MN:"Minneapolis (MSP)",MS:"Jackson (JAN)",MO:"St. Louis (STL)",MT:"Billings (BIL)",NE:"Omaha (OMA)",NV:"Las Vegas (LAS)",NH:"Manchester NH (MHT)",NJ:"Newark (EWR)",NM:"Albuquerque (ABQ)",NY:"New York (JFK)",NC:"Charlotte (CLT)",ND:"Fargo (FAR)",OH:"Cincinnati (CVG)",OK:"Oklahoma City (OKC)",OR:"Portland (PDX)",PA:"Philadelphia (PHL)",RI:"Providence (PVD)",SC:"Charleston SC (CHS)",SD:"Sioux Falls (FSD)",TN:"Nashville (BNA)",TX:"Dallas–Fort Worth (DFW)",UT:"Salt Lake City (SLC)",VT:"Burlington (BTV)",VA:"Washington (IAD)",WA:"Seattle (SEA)",WV:"Charleston WV (CRW)",WI:"Milwaukee (MKE)",WY:"Denver (DEN)"};
 const US_CITY_AIRPORT={"CORAL SPRINGS":"Miami (MIA)","FORT LAUDERDALE":"Fort Lauderdale (FLL)","MIAMI":"Miami (MIA)","ORLANDO":"Orlando (MCO)","TAMPA":"Tampa (TPA)","HOUSTON":"Houston (IAH)","LOS ANGELES":"Los Angeles (LAX)","SAN FRANCISCO":"San Francisco (SFO)","SAN DIEGO":"San Diego (SAN)","NEW YORK":"New York (JFK)","NEWARK":"New York (EWR)","CHICAGO":"Chicago (ORD)","ATLANTA":"Atlanta (ATL)","DALLAS":"Dallas–Fort Worth (DFW)","FORT WORTH":"Dallas–Fort Worth (DFW)","SEATTLE":"Seattle (SEA)","BOSTON":"Boston (BOS)","DENVER":"Denver (DEN)","PHOENIX":"Phoenix (PHX)","WICHITA":"Wichita (ICT)","TULSA":"Tulsa (TUL)","MEMPHIS":"Memphis (MEM)","DETROIT":"Detroit (DTW)","LOUISVILLE":"Louisville (SDF)"};
@@ -359,7 +390,11 @@ function addRow(d){
   tr.querySelector('.desc').value=d.desc||''; tr.querySelector('.hs').value=d.hs||''; tr.querySelector('.origin').value=d.origin||''; tr.querySelector('.qty').value=d.qty||''; tr.querySelector('.val').value=d.val||'';
   tr.dataset.mfr=d.mfr||''; tr.dataset.city=d.city||'';
   tr.querySelector('.del').onclick=()=>{tr.remove();render();};
-  tr.querySelectorAll('input').forEach(i=>i.addEventListener('input',()=>{ if(i.classList.contains('pn'))autoFromLib(tr); render();}));
+  tr.querySelectorAll('input').forEach(i=>i.addEventListener('input',()=>{
+    if(i.classList.contains('pn'))autoFromLib(tr);
+    if(i.classList.contains('hs')||i.classList.contains('origin'))rememberRow(tr);
+    render();
+  }));
   $('itemBody').appendChild(tr);
   return tr;
 }
@@ -371,6 +406,18 @@ function autoFromLib(tr){
     tr.dataset.mfr=hit.mfr||tr.dataset.mfr; tr.dataset.city=hit.city||tr.dataset.city;
     if(region()==='usa'){if(!$('usMfr').value)$('usMfr').value=hit.mfr||'';if(!$('usMfrCity').value)$('usMfrCity').value=hit.city||'';}
   }
+}
+// Learn typed HS code / origin back into the local parts library, so the next shipment
+// containing this P/N fills them automatically. Per-browser (localStorage), never sent
+// anywhere. AMICOS holds no HS code / origin (CUSTOMS1/2 are empty), so this library is
+// the only source — and it grows every time the operator fills a new part by hand.
+function rememberRow(tr){
+  const pn=(tr.querySelector('.pn').value||'').toUpperCase().trim(); if(!pn) return;
+  const hs=tr.querySelector('.hs').value.trim(), origin=tr.querySelector('.origin').value.trim();
+  if(!hs && !origin) return;
+  const lib=loadLib(), cur=lib[pn]||{};
+  const next={hs:hs||cur.hs||'', origin:origin||cur.origin||'', mfr:tr.dataset.mfr||cur.mfr||'', city:tr.dataset.city||cur.city||''};
+  if(next.hs!==cur.hs||next.origin!==cur.origin||next.mfr!==cur.mfr||next.city!==cur.city){ lib[pn]=next; saveLib(lib); }
 }
 function clearEmptyRows(){[...$('itemBody').querySelectorAll('tr')].forEach(tr=>{if(!tr.querySelector('.pn').value.trim()&&!tr.querySelector('.sn').value.trim()&&!tr.querySelector('.bn').value.trim()&&!tr.querySelector('.val').value.trim())tr.remove();});}
 function copyValueToAll(){const vals=[...$('itemBody').querySelectorAll('.val')];const f=vals.map(v=>v.value.trim()).find(v=>v!=='');if(f===undefined)return;vals.forEach(v=>v.value=f);render();}
@@ -389,6 +436,10 @@ function getItems(){
    shipment straight from AMICOS by order number and lists recent shipments.
    ============================================================================ */
 const AM_DEFAULT_URL='http://127.0.0.1:8000';
+// Amapola ships aircraft components; almost all fall under HS 8807.30 (parts of aircraft) —
+// the company's own tariff (EORI 88073000). Used as the per-line HS default when the parts
+// library has nothing more specific. Always operator-editable, and a typed value is learned.
+const DEFAULT_HS='8807.30';
 const AM={
   url(){ if(location.protocol==='http:'||location.protocol==='https:') return location.origin.replace(/\/+$/,'');
          return (LS.get('amapolaAmicosUrl')||AM_DEFAULT_URL).replace(/\/+$/,''); },
@@ -442,19 +493,50 @@ async function amSearch(){
   }catch(e){ amState('off','Search failed — '+e.message); amShowOffline(true); }
 }
 
+let AM_DETAILS=[]; // all shipments currently loaded (one or several combined)
+
+// Parse one or several order references from the input: "662317, ro662316 SO662000".
+// Each match is an optional type prefix + the numeric order number; a missing type uses
+// the dropdown default. De-duplicated, so pasting the same number twice is harmless.
+function amParseOrders(raw, defType){
+  const out=[], seen=new Set(); const re=/([A-Za-z]{1,6})?\s*[#:]?\s*0*(\d{3,})/g; let m;
+  while((m=re.exec(raw||''))){
+    const type=((m[1]||defType||'RO')+'').toUpperCase(), no=m[2];
+    const k=type+'/'+no; if(seen.has(k))continue; seen.add(k); out.push({type,no});
+  }
+  return out;
+}
+// True when the loaded orders don't all ship to the same recommended consignee. One
+// customs invoice is one consignee, so this is a "verify" flag, never a hard block.
+function amConsigneeMismatch(list){
+  const key=d=>{ const cand=(d.consignee_candidates||[]); const c=cand.find(x=>x.role===d.consignee_recommended_role)||cand[0]; return c?c.org_id:''; };
+  const first=key(list[0]); return list.some(d=>key(d)!==first);
+}
+
 async function amLoad(type,no){
-  type=type||$('amType').value; no=(''+(no||$('amNo').value)).trim();
-  if(!no){ amState('on','Enter an order number, or search below.'); $('amNo').focus(); return; }
-  amState('busy','Loading '+type+' '+no+' …'); $('amChoose').innerHTML='';
-  try{ const d=await AM.get('/shipment/order/'+encodeURIComponent(type)+'/'+encodeURIComponent(no));
-    if(!d.found){ amState('off','Not found: '+type+' '+no+'. Check the type/number.'); return; }
-    AM_DETAIL=d;
-    applyShipment(d, d.consignee_recommended_role||'');
-    amRenderConsigneeChooser(d);
-    $('amResults').classList.remove('show');
-    $('amNo').value=d.order_no; $('amType').value=d.order_type;
-    amState('on','Loaded '+d.label+' — review, add weights/price, then print.');
-  }catch(e){ amState('off','Load failed — '+e.message); amShowOffline(true); }
+  // A grid click passes an explicit (type,no); the button/Enter parses the input field
+  // for one OR SEVERAL order numbers, which then combine into a single invoice.
+  const orders = (type && no!=null && (''+no).trim())
+    ? [{type:(''+type).toUpperCase(), no:(''+no).trim()}]
+    : amParseOrders($('amNo').value, $('amType').value);
+  if(!orders.length){ amState('on','Enter one or more order numbers (e.g. 662317, 662316), or search below.'); $('amNo').focus(); return; }
+  amState('busy','Loading '+orders.length+' order'+(orders.length>1?'s':'')+' from AMICOS…'); $('amChoose').innerHTML='';
+  const loaded=[], missing=[];
+  for(const o of orders){
+    try{ const d=await AM.get('/shipment/order/'+encodeURIComponent(o.type)+'/'+encodeURIComponent(o.no));
+      if(d && d.found) loaded.push(d); else missing.push(o.type+' '+o.no);
+    }catch(e){ amState('off','Load failed — '+e.message); amShowOffline(true); return; }
+  }
+  if(!loaded.length){ amState('off','Not found: '+missing.join(', ')+'. Check the type/number.'); return; }
+  AM_DETAIL=loaded[0]; AM_DETAILS=loaded;
+  applyShipments(loaded);
+  amRenderConsigneeChooser(loaded[0]);
+  $('amResults').classList.remove('show');
+  const lc=loaded.reduce((s,d)=>s+((d.lines||[]).length),0);
+  let msg='Loaded '+loaded.map(d=>d.label).join(' + ')+' — '+lc+' line item'+(lc===1?'':'s')+'.';
+  if(missing.length) msg+=' Not found: '+missing.join(', ')+'.';
+  if(loaded.length>1 && amConsigneeMismatch(loaded)) msg+=' ⚠ These orders ship to different consignees — verify the ship-to before printing.';
+  amState('on', msg);
 }
 
 function amRenderConsigneeChooser(d){
@@ -522,18 +604,33 @@ function applyConsignee(c){
   applyAirport(); scheduleGeo();
 }
 
-function applyShipment(d, role){
-  $('refType').value=d.order_type||''; $('refNo').value=(d.order_no!=null?(''+d.order_no):(d.reference||d.label||''));
-  if(!$('reason').value) $('reason').value=amReasonFor(d.order_type);
-  if(d.carrier_suggestion){ $('carrier').value=d.carrier_suggestion+(d.freight_account?(' (acct '+d.freight_account+')'):''); }
-  const cand=(d.consignee_candidates||[]);
-  applyConsignee(cand.find(c=>c.role===role)||cand[0]);
-  // line items — replace the table with the AMICOS lines
+function applyShipments(list){
+  const first=list[0];
+  // Reference = every order's label, joined (e.g. "RO 662317 + RO 662316 + RO 662318").
+  $('refType').value=first.order_type||'';
+  $('refNo').value=list.map(d=>(d.order_no!=null?(''+d.order_no):(d.label||''))).join(' + ');
+  if(!$('reason').value) $('reason').value=amReasonFor(first.order_type);
+  // Carrier + freight account come from the ship note (orders to one place normally match).
+  const carrierSrc=list.find(d=>d.carrier_suggestion)||first;
+  if(carrierSrc.carrier_suggestion){ $('carrier').value=carrierSrc.carrier_suggestion+(carrierSrc.freight_account?(' (acct '+carrierSrc.freight_account+')'):''); }
+  // Consignee from the first order's recommended party (operator can re-pick below).
+  const cand=(first.consignee_candidates||[]);
+  applyConsignee(cand.find(c=>c.role===first.consignee_recommended_role)||cand[0]);
+  // Line items — every loaded order's lines, combined into the one table. Each row then
+  // gets HS code + country of origin from the parts library (AMICOS holds neither).
   $('itemBody').innerHTML='';
-  (d.lines||[]).forEach(l=>addRow({pn:l.part_no,sn:l.serial_no,bn:l.batch_no,desc:l.description,qty:(l.qty||'')}));
-  if(!(d.lines||[]).length) addRow({});
-  // ship / pack notes shown as read-only reference (carrier/cert instructions)
-  const notes=[]; if(d.ship_note)notes.push('SHIP: '+d.ship_note); if(d.pack_note)notes.push('PACK: '+d.pack_note);
+  let n=0;
+  list.forEach(d=>(d.lines||[]).forEach(l=>{
+    const tr=addRow({pn:l.part_no,sn:l.serial_no,bn:l.batch_no,desc:l.description,qty:(l.qty||'')});
+    autoFromLib(tr);                                              // HS + origin from the parts library
+    if(!tr.querySelector('.hs').value) tr.querySelector('.hs').value=DEFAULT_HS; // else Amapola's aircraft-parts tariff
+    n++;
+  }));
+  if(!n) addRow({});
+  // Ship / pack notes from all orders, shown as read-only reference.
+  const notes=[];
+  list.forEach(d=>{ const p=[]; if(d.ship_note)p.push('SHIP: '+d.ship_note); if(d.pack_note)p.push('PACK: '+d.pack_note);
+    if(p.length) notes.push((list.length>1?('['+d.label+'] '):'')+p.join('\n')); });
   let nb=$('amNotes');
   if(!nb && $('amStatus')){ nb=document.createElement('div'); nb.id='amNotes'; nb.className='amnote'; $('amStatus').parentNode.insertBefore(nb,$('amStatus')); }
   if(nb){ nb.textContent=notes.join('\n\n'); nb.style.display=notes.length?'':'none'; }
@@ -989,7 +1086,7 @@ function woodDecl(){
     ${annex}
   </div>`;
 }
-function render(){
+function renderDoc(){
   const items=getItems();const r=region();const banner=$('banner'),prev=$('preview');
   $('usaBox').classList.toggle('show',r==='usa');
   if(items.length===0 && !$('toCompany').value.trim() && !$('country').value){
@@ -1013,6 +1110,46 @@ function render(){
   else if(r==='usa'){banner.className='banner docs noprint';banner.innerHTML='⚠ <b>USA:</b> Customs Invoice'+(usDecls?' · CBP Form 3311 · Foreign Shipper’s Declaration':' (US declarations unticked)')+extra+'.'+originWarn;}
   else if(r==='br'){banner.className='banner docs noprint';banner.innerHTML='⚠ <b>BRAZIL — detailed customs.</b> Customs Invoice + Packing List'+(wd?' + ISPM 15 declaration':'')+'. Fill HS/NCM code, net &amp; gross weight, carrier &amp; transport value'+(wd?'':' — and add wood-packaging treatment if shipping on a pallet/crate')+'.';}
   else{banner.className='banner docs noprint';banner.innerHTML='⚠ <b>Customs Invoice required</b> for '+esc($('country').value)+extra+'.';}
+}
+// render() draws the document preview, then refreshes the carrier-booking guidance so it
+// stays in step on every path — including the EU "AWB only" case, which returns early above.
+function render(){ renderDoc(); if(typeof updateBooking==='function') updateBooking(); }
+
+// ---- Carrier booking guidance (FedEx / DHL / TNT) --------------------------
+const CARRIER_BTN={FEDEX:'bookFedex',DHL:'bookDhl',TNT:'bookTnt'};
+function bookDetectedCarrier(){
+  const c=($('carrier')?$('carrier').value:'').toUpperCase();
+  if(/FED\s?EX/.test(c))return 'FEDEX';
+  if(c.indexOf('DHL')>=0)return 'DHL';
+  if(c.indexOf('TNT')>=0)return 'TNT';
+  return '';
+}
+function bookFreightAcct(){ const m=($('carrier')?$('carrier').value:'').match(/acct\.?\s*([0-9][0-9 \-]{3,})/i); return m?m[1].replace(/\s+/g,' ').trim():''; }
+function updateBooking(){
+  const card=$('bookCard'); if(!card) return;
+  const items=(typeof getItems==='function')?getItems():[];
+  if(!items.length){ card.style.display='none'; return; }   // nothing to ship yet
+  card.style.display='';
+  const rec=bookDetectedCarrier(), acct=bookFreightAcct();
+  Object.keys(CARRIER_BTN).forEach(k=>{ const el=$(CARRIER_BTN[k]); if(el)el.classList.toggle('rec', rec===k); });
+  $('bookHint').innerHTML = rec
+    ? ('The ship note names <b>'+rec+'</b>'+(acct?(' on account <b>'+esc(acct)+'</b>'):'')+' — highlighted below. Book the pickup, then hand over the documents.')
+    : 'Book the pickup with your carrier, then hand over the printed documents.';
+  const boxes=(function(){ const b=(typeof getBoxes==='function')?getBoxes():[]; if(b.length)return b.reduce((s,x)=>s+(x.qty||1),0); return ($('boxes')&&$('boxes').value)||'1'; })();
+  const gross=(typeof grossTotal==='function')?grossTotal():0;
+  const dest=($('country')&&$('country').value)||'—';
+  const cons=($('toCompany')&&$('toCompany').value)||'—';
+  const ref=(typeof refDisp==='function')?refDisp():'';
+  const rows=[
+    ['Ship to', esc(cons)],
+    ['Destination', esc(dest)],
+    ['Packages', esc(''+boxes)],
+    ['Gross weight', gross?esc(gross.toFixed(1)+' kg'):'<span class="warn">enter net/gross weight</span>'],
+    ['Contents', items.length+' aircraft part'+(items.length===1?'':'s')],
+    ['Reference', ref||'—']
+  ];
+  if(acct) rows.push(['Carrier account', esc(acct)]);
+  $('bookSummary').innerHTML=rows.map(r=>'<div class="r"><b>'+r[0]+'</b><span>'+r[1]+'</span></div>').join('');
 }
 function updateCountryUI(){const r=region();$('usaBox').classList.toggle('show',r==='usa');if(r==='br')$('pkgList').checked=true;$('countryHint').textContent={'':'',eu:"EU — only the AWB is needed.",ci:"Customs Invoice required.",usa:"Customs Invoice + 2 US declarations required.",br:"Brazil — Customs Invoice + Packing List + ISPM 15 if wooden packaging."}[r];$('airportList').innerHTML=airportOptions($('country').value);applyAirport();}
 function resetAll(){
