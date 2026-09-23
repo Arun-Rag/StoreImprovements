@@ -118,6 +118,33 @@
   .booksum .r span.warn{color:#b06b00;font-weight:600}
   .bookchk{margin-top:8px;font-size:11px;color:var(--muted);padding-left:16px}
   .bookchk li{margin:2px 0}
+  /* --- Advanced: shipment readiness & exceptions --- */
+  .rdy{border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:0 1px 3px rgba(0,0,0,.05);margin-bottom:14px;overflow:hidden}
+  .rdy .rhead{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--line)}
+  .rdy .rhead.ok{background:#eafaf0} .rdy .rhead.block{background:#fdeeee} .rdy .rhead.warn{background:#fff6e8}
+  .rdy .gauge{--p:0;width:48px;height:48px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-size:12px;font-weight:800;color:var(--dark);
+    background:conic-gradient(var(--gc,#1a7f4b) calc(var(--p)*1%),#e4e9ee 0)}
+  .rdy .gauge span{width:38px;height:38px;border-radius:50%;background:var(--panel);display:grid;place-items:center}
+  .rdy .rtitle{flex:1} .rdy .rtitle b{font-size:13px;display:block} .rdy .rtitle .s{font-size:11.5px;color:var(--muted)}
+  .rdy .rstat{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:4px 9px;border-radius:20px}
+  .rdy .rstat.ok{background:#1a7f4b;color:#fff} .rdy .rstat.block{background:#c33;color:#fff} .rdy .rstat.warn{background:#b06b00;color:#fff}
+  .rdy .rbody{padding:8px 12px 12px}
+  .rdy .meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;color:var(--muted);margin:2px 0 8px}
+  .rdy .meta b{color:var(--dark)}
+  .exc{list-style:none;margin:0;padding:0}
+  .exc li{display:flex;gap:9px;align-items:flex-start;padding:7px 8px;border-radius:7px;margin:5px 0;font-size:12px;border:1px solid transparent}
+  .exc li.block{background:#fdeeee;border-color:#f2c9c9} .exc li.warn{background:#fff6e8;border-color:#f0d8a8} .exc li.ok{background:#eafaf0;border-color:#bfe6cf}
+  .exc .sev{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:2px 6px;border-radius:5px;flex:0 0 auto;margin-top:1px}
+  .exc li.block .sev{background:#c33;color:#fff} .exc li.warn .sev{background:#b06b00;color:#fff} .exc li.ok .sev{background:#1a7f4b;color:#fff}
+  .exc .txt{flex:1} .exc .txt .act{display:block;color:var(--muted);font-size:11px;margin-top:1px}
+  .exc .txt .act label{display:inline-flex;gap:5px;align-items:center;font-weight:600;color:var(--warn);text-transform:none;margin:3px 0 0}
+  .exc .txt .act input{width:auto;margin:0}
+  .rlegend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:10.5px;color:var(--muted);margin-top:9px;padding-top:8px;border-top:1px dashed var(--line)}
+  .rlegend i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:4px;vertical-align:-1px}
+  /* per-line risk marker on the sidebar item rows (never printed) */
+  #itemBody tr{border-left:3px solid transparent}
+  #itemBody tr.rs-amicos{border-left-color:#1577b8} #itemBody tr.rs-verified{border-left-color:#1a7f4b}
+  #itemBody tr.rs-default{border-left-color:#b06b00} #itemBody tr.rs-block{border-left-color:#c33}
   @media print{
     body{background:#fff}.wrap{max-width:none;padding:0}.noprint{display:none!important}.layout{display:block}.preview{gap:0}
     .doc{border:0;border-radius:0;box-shadow:none;padding:12mm 14mm;page-break-after:always}.doc:last-child{page-break-after:auto}
@@ -331,6 +358,23 @@
         <button class="btn ghost" id="resetBtn">↺ Clear all</button>
       </div>
       <div class="banner idle noprint" id="banner"></div>
+      <div class="rdy noprint" id="rdyCard" style="display:none">
+        <div class="rhead" id="rdyHead">
+          <div class="gauge" id="rdyGauge" style="--p:0"><span id="rdyScore">0%</span></div>
+          <div class="rtitle"><b id="rdyTitle">Shipment readiness</b><span class="s" id="rdySub"></span></div>
+          <div class="rstat" id="rdyStat">—</div>
+        </div>
+        <div class="rbody">
+          <div class="meta" id="rdyMeta"></div>
+          <ul class="exc" id="rdyExc"></ul>
+          <div class="rlegend">
+            <span><i style="background:#1577b8"></i>AMICOS</span>
+            <span><i style="background:#1a7f4b"></i>Verified (library)</span>
+            <span><i style="background:#b06b00"></i>Default — verify</span>
+            <span><i style="background:#c33"></i>Missing / blocking</span>
+          </div>
+        </div>
+      </div>
       <div class="preview" id="preview"></div>
     </div>
   </div>
@@ -388,7 +432,7 @@ function addRow(d){
   tr.innerHTML='<td><input class="pn"></td><td><input class="sn"></td><td><input class="bn"></td><td><input class="desc"></td><td><input class="hs" placeholder="8807.30"></td><td><input class="origin" placeholder="—"></td><td class="num"><input class="qty"></td><td class="num"><input class="val"></td><td><button class="btn ghost sm del">✕</button></td>';
   tr.querySelector('.pn').value=d.pn||''; tr.querySelector('.sn').value=d.sn||''; tr.querySelector('.bn').value=d.bn||'';
   tr.querySelector('.desc').value=d.desc||''; tr.querySelector('.hs').value=d.hs||''; tr.querySelector('.origin').value=d.origin||''; tr.querySelector('.qty').value=d.qty||''; tr.querySelector('.val').value=d.val||'';
-  tr.dataset.mfr=d.mfr||''; tr.dataset.city=d.city||'';
+  tr.dataset.mfr=d.mfr||''; tr.dataset.city=d.city||''; tr.dataset.src=d.src||'manual';
   tr.querySelector('.del').onclick=()=>{tr.remove();render();};
   tr.querySelectorAll('input').forEach(i=>i.addEventListener('input',()=>{
     if(i.classList.contains('pn'))autoFromLib(tr);
@@ -605,6 +649,7 @@ function applyConsignee(c){
 }
 
 function applyShipments(list){
+  SHIP_ID='';                               // fresh workspace id per load
   const first=list[0];
   // Reference = every order's label, joined (e.g. "RO 662317 + RO 662316 + RO 662318").
   $('refType').value=first.order_type||'';
@@ -621,11 +666,12 @@ function applyShipments(list){
   $('itemBody').innerHTML='';
   let n=0;
   list.forEach(d=>(d.lines||[]).forEach(l=>{
-    const tr=addRow({pn:l.part_no,sn:l.serial_no,bn:l.batch_no,desc:l.description,qty:(l.qty||'')});
+    const tr=addRow({pn:l.part_no,sn:l.serial_no,bn:l.batch_no,desc:l.description,qty:(l.qty||''),src:'amicos'});
     autoFromLib(tr);                                              // HS + origin from the parts library
     if(!tr.querySelector('.hs').value) tr.querySelector('.hs').value=DEFAULT_HS; // else Amapola's aircraft-parts tariff
     n++;
   }));
+  AM_ADDRCHECK = addressCrossCheck(list);   // full field-level consignee comparison across the orders
   if(!n) addRow({});
   // Ship / pack notes from all orders, shown as read-only reference.
   const notes=[];
@@ -1113,7 +1159,123 @@ function renderDoc(){
 }
 // render() draws the document preview, then refreshes the carrier-booking guidance so it
 // stays in step on every path — including the EU "AWB only" case, which returns early above.
-function render(){ renderDoc(); if(typeof updateBooking==='function') updateBooking(); }
+function render(){ renderDoc(); if(typeof updateBooking==='function') updateBooking(); if(typeof updateReadiness==='function') updateReadiness(); }
+
+// ============================================================================
+// ADVANCED — Shipment readiness & exception engine (additive, safety-first).
+// Follows the report's rule: automate what is verified, suggest what is probable,
+// highlight what is uncertain, and make unsafe/incomplete shipments visibly NOT READY.
+// It never changes how documents are generated and never disables printing — it guides
+// the operator to the gaps. Nothing here is written to AMICOS.
+// ============================================================================
+let AM_ADDRCHECK=null;   // last multi-order address comparison
+let SHIP_ID='';          // workspace id for the current shipment
+
+const DG_TERMS=[
+  ['lithium','Lithium battery (UN3480/3481) — Wh/config required'],['li-ion','Lithium battery'],['li ion','Lithium battery'],
+  ['battery','Battery — confirm chemistry & Watt-hours'],['aerosol','Aerosol (UN1950)'],
+  ['sealant','Sealant/adhesive — flammable?'],['adhesive','Adhesive — flammable?'],['paint','Paint (UN1263?)'],
+  ['oxygen generator','Chemical oxygen generator (UN3356)'],['oxygen','Oxygen / pressurised gas'],['cylinder','Pressurised cylinder'],
+  ['compressed','Compressed gas'],['extinguisher','Fire extinguisher'],['flammable','Flammable'],['corrosive','Corrosive'],
+  ['radioactive','Radioactive source'],['dry ice','Dry ice (UN1845)'],['squib','Cartridge/squib (explosive)'],
+  ['cartridge','Cartridge/actuator (explosive)'],['inflator','Inflator (explosive)'],['escape slide','Escape slide (gas + squib)']
+];
+function dgHits(desc){ const d=(' '+(desc||'')+' ').toLowerCase(); const out=[]; DG_TERMS.forEach(([k,l])=>{ if(d.indexOf(k)>=0 && out.indexOf(l)<0) out.push(l); }); return out; }
+
+const ADDR_ABBR=[[/\bSTREET\b/g,'ST'],[/\bROAD\b/g,'RD'],[/\bAVENUE\b/g,'AVE'],[/\bBOULEVARD\b/g,'BLVD'],[/\bSUITE\b/g,'STE'],[/\bBUILDING\b/g,'BLDG'],[/\bUNITED KINGDOM\b/g,'GB'],[/\bGREAT BRITAIN\b/g,'GB'],[/\bUNITED STATES OF AMERICA\b/g,'US'],[/\bUNITED STATES\b/g,'US']];
+function normAddr(s){ let t=(s||'').toUpperCase(); ADDR_ABBR.forEach(([re,to])=>t=t.replace(re,to)); return t.replace(/[.,#\-]/g,' ').replace(/\s+/g,' ').trim(); }
+function consigneeOf(d){ const c=(d&&d.consignee_candidates)||[]; return c.find(x=>x.role===d.consignee_recommended_role)||c[0]||null; }
+// Field-level comparison of the ship-to across several orders (report §6): country and
+// consignee mismatch BLOCK (one invoice = one consignee); a same-company address text
+// difference is a WARNING to verify the delivery site.
+function addressCrossCheck(list){
+  if(!list||list.length<2) return null;
+  const base=consigneeOf(list[0]); if(!base) return {block:false,warn:false,rows:[],base:null};
+  const bkey={org:(base.org_id||'').toUpperCase(), addr:normAddr((base.best_address||'').replace(/\n/g,' ')), country:normAddr(base.country_name||base.country||'')};
+  let block=false, warn=false; const rows=[];
+  for(let i=1;i<list.length;i++){
+    const c=consigneeOf(list[i]); if(!c){ block=true; rows.push([list[i].label,'no consignee on file','block']); continue; }
+    const org=(c.org_id||'').toUpperCase(), addr=normAddr((c.best_address||'').replace(/\n/g,' ')), country=normAddr(c.country_name||c.country||'');
+    if(country!==bkey.country){ block=true; rows.push([list[i].label,'different destination country ('+(c.country_name||c.country||'?')+')','block']); }
+    else if(org!==bkey.org){ block=true; rows.push([list[i].label,'different consignee ('+c.name+')','block']); }
+    else if(addr!==bkey.addr){ warn=true; rows.push([list[i].label,'same company, delivery address differs — verify site','warn']); }
+    else rows.push([list[i].label,'matches','ok']);
+  }
+  return {block, warn, rows, base};
+}
+// Suggested shipment purpose from order type (report §7). Informational; the operator edits
+// the "Reason for export" field, which is what actually drives the document wording.
+function shipmentPurpose(){
+  const t=($('refType').value||'').toUpperCase();
+  if(t==='RO'||t==='ROCE'||t==='ROKO'||t==='ROSA') return {label:'Repair outbound', conf:90};
+  if(t==='LO') return {label:'Loan out', conf:85};
+  if(t==='SO') return {label:'Sale', conf:88};
+  if(t==='CO') return {label:'Commercial delivery', conf:80};
+  if(t==='SM') return {label:'Stock transfer', conf:80};
+  return {label:'', conf:0};
+}
+
+function updateReadiness(){
+  const card=$('rdyCard'); if(!card) return;
+  const rows=[...$('itemBody').querySelectorAll('tr')];
+  const items=(typeof getItems==='function')?getItems():[];
+  if(!items.length){ card.style.display='none'; rows.forEach(tr=>tr.className=''); return; }
+  card.style.display='';
+  if(!SHIP_ID){ let seq; try{ seq=(parseInt(LS.get('amapolaShpSeq')||'0',10)||0)+1; LS.set('amapolaShpSeq',''+seq);}catch(e){ seq=Math.floor(Math.random()*9000)+1000; } SHIP_ID='SHP-'+new Date().getFullYear()+'-'+String(seq).padStart(5,'0'); }
+
+  const lib=(typeof loadLib==='function')?loadLib():{};
+  const issues=[]; const seenSN={}; let dgAny=false, originMissing=0, hsDefault=0;
+  const hasAmicos=rows.some(tr=>tr.dataset.src==='amicos');
+
+  rows.forEach(tr=>{
+    const pn=(tr.querySelector('.pn').value||'').trim(), sn=(tr.querySelector('.sn').value||'').trim();
+    const hs=(tr.querySelector('.hs').value||'').trim(), origin=(tr.querySelector('.origin').value||'').trim();
+    const desc=(tr.querySelector('.desc').value||'').trim();
+    if(!pn && !sn && !desc){ tr.className=''; return; }
+    let cls = (tr.dataset.src==='amicos') ? 'rs-amicos' : '';
+    const L=lib[pn.toUpperCase()]||{};
+    if(!origin){ originMissing++; cls='rs-block'; }
+    else if(L.origin) cls='rs-verified';
+    if(hs===DEFAULT_HS && !L.hs){ hsDefault++; if(cls!=='rs-block' && cls!=='rs-verified') cls='rs-default'; }
+    if(sn){ if(seenSN[sn]){ issues.push({sev:'warn',txt:'Duplicate serial <b>'+esc(sn)+'</b> on more than one line — verify each unit.'}); } seenSN[sn]=1; }
+    const hits=dgHits(desc+' '+pn);
+    if(hits.length){ dgAny=true; cls='rs-block'; tr.title='Possible dangerous goods: '+hits.join('; '); } else { tr.removeAttribute('title'); }
+    tr.className=cls;
+  });
+
+  if(!$('country').value) issues.unshift({sev:'block',txt:'No destination country selected — the required customs documents can’t be determined.'});
+  if(originMissing) issues.push({sev:'block',txt:'Country of origin missing on <b>'+originMissing+'</b> line'+(originMissing>1?'s':'')+' — required on the customs declaration.'});
+  if(hsDefault) issues.push({sev:'warn',txt:'HS code is the <b>8807.30</b> default on <b>'+hsDefault+'</b> line'+(hsDefault>1?'s':'')+' — verify (esp. sealants, batteries, chemicals, tools).'});
+  if(dgAny){ const ack=$('dgAck')&&$('dgAck').checked;
+    issues.push({sev:ack?'ok':'block',
+      txt:'Possible <b>dangerous goods</b> from the part description'+(ack?' — reviewed.':' — classify, or confirm not applicable, before shipping.'),
+      act:'<label><input type="checkbox" id="dgAck" '+(ack?'checked':'')+'> DG reviewed (classified or not applicable)</label>'}); }
+  const gross=(typeof grossTotal==='function')?grossTotal():0;
+  if(!gross) issues.push({sev:'warn',txt:'Gross weight not entered — needed for the carrier booking / chargeable weight.'});
+  if(AM_ADDRCHECK && hasAmicos){
+    if(AM_ADDRCHECK.block) issues.push({sev:'block',txt:'Orders do <b>not</b> share one ship-to: '+AM_ADDRCHECK.rows.filter(x=>x[2]!=='ok').map(x=>esc(x[0])+' — '+esc(x[1])).join('; ')+'. One customs invoice = one consignee.'});
+    else if(AM_ADDRCHECK.warn) issues.push({sev:'warn',txt:'Consignee address differs across orders: '+AM_ADDRCHECK.rows.filter(x=>x[2]==='warn').map(x=>esc(x[0])+' — '+esc(x[1])).join('; ')+'.'});
+  }
+
+  const blockers=issues.filter(i=>i.sev==='block').length, warns=issues.filter(i=>i.sev==='warn').length;
+  let score=100 - blockers*22 - warns*7; if(score<0)score=0; if(!blockers&&!warns)score=100;
+  const status = blockers?'block':(warns?'warn':'ok'), statusText = blockers?'Blocked':(warns?'Review':'Ready');
+
+  $('rdyHead').className='rhead '+status;
+  const g=$('rdyGauge'); g.style.setProperty('--p',score); g.style.setProperty('--gc', status==='block'?'#c33':status==='warn'?'#b06b00':'#1a7f4b');
+  $('rdyScore').textContent=score+'%';
+  const p=shipmentPurpose();
+  $('rdyTitle').textContent = blockers?(blockers+' issue'+(blockers>1?'s':'')+' to resolve'):(warns?(warns+' item'+(warns>1?'s':'')+' to review'):'Ready to prepare');
+  $('rdySub').textContent = items.length+' line'+(items.length>1?'s':'')+(p.label?(' · '+p.label):'');
+  const st=$('rdyStat'); st.className='rstat '+status; st.textContent=statusText;
+  $('rdyMeta').innerHTML='<span><b>'+esc(SHIP_ID)+'</b></span>'
+    +'<span>Ref: <b>'+(refDisp()||'—')+'</b></span>'
+    +'<span>Ship-to: <b>'+esc($('toCompany').value||'—')+'</b></span>'
+    +(p.label?('<span>Purpose: <b>'+esc(p.label)+'</b> ('+p.conf+'%)</span>'):'');
+  if(!issues.length) issues.push({sev:'ok',txt:'All checks passed. Review weights &amp; values, then print and book.'});
+  $('rdyExc').innerHTML=issues.map(i=>'<li class="'+i.sev+'"><span class="sev">'+(i.sev==='block'?'Block':i.sev==='warn'?'Check':'OK')+'</span><span class="txt">'+i.txt+(i.act?('<span class="act">'+i.act+'</span>'):'')+'</span></li>').join('');
+  const ack=$('dgAck'); if(ack) ack.onchange=()=>updateReadiness();
+}
 
 // ---- Carrier booking guidance (FedEx / DHL / TNT) --------------------------
 const CARRIER_BTN={FEDEX:'bookFedex',DHL:'bookDhl',TNT:'bookTnt'};
@@ -1153,6 +1315,7 @@ function updateBooking(){
 }
 function updateCountryUI(){const r=region();$('usaBox').classList.toggle('show',r==='usa');if(r==='br')$('pkgList').checked=true;$('countryHint').textContent={'':'',eu:"EU — only the AWB is needed.",ci:"Customs Invoice required.",usa:"Customs Invoice + 2 US declarations required.",br:"Brazil — Customs Invoice + Packing List + ISPM 15 if wooden packaging."}[r];$('airportList').innerHTML=airportOptions($('country').value);applyAirport();}
 function resetAll(){
+  SHIP_ID='';AM_ADDRCHECK=null;
   $('itemBody').innerHTML='';addRow();
   ['refNo','refType','toCompany','toAddress','toContact','toEmail','custId','reason','byName','byTitle','boxDim','weight','netWeight','boxes','carrier','destAirport','freight','insurance','taxrate','handling','ippcCountry','ippcReg','pkgUnits','usMfr','usMfrCity','usPort','usEntryPort','usReason','usDeclName'].forEach(id=>$(id).value='');
   $('usExportDate').value='';$('country').value='';$('pkgType').value='';$('pkgTreat').value='';$('pkgDate').value='';$('pkgList').checked=false;$('usDecls').checked=true;$('palletBody').innerHTML='';
