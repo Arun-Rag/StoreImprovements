@@ -598,8 +598,14 @@ async function amLoad(type,no){
     }catch(e){ amState('off','Load failed — '+e.message); amShowOffline(true); return; }
   }
   if(!loaded.length){ amState('off','Not found: '+missing.join(', ')+'. Check the type/number.'); return; }
+  // A brand-new order set starts a CLEAN shipment (only the order number carries in). But
+  // re-loading a SUPERSET (you added another order to the ones already loaded) keeps the
+  // weights / boxes / prices you have already typed.
+  const newKeys=new Set(loaded.map(d=>d.order_type+'/'+d.order_no));
+  const prevKeys=(AM_DETAILS||[]).map(d=>d.order_type+'/'+d.order_no);
+  const addingToCurrent = prevKeys.length>0 && prevKeys.every(k=>newKeys.has(k));
   AM_DETAIL=loaded[0]; AM_DETAILS=loaded;
-  applyShipments(loaded);
+  applyShipments(loaded, !addingToCurrent);
   amRenderConsigneeChooser(loaded[0]);
   $('amResults').classList.remove('show');
   const lc=loaded.reduce((s,d)=>s+((d.lines||[]).length),0);
@@ -691,7 +697,24 @@ function applyConsignee(c, ai){
   applyAirport(); scheduleGeo();
 }
 
-function applyShipments(list){
+// Clear the shipment-specific fields the operator (not AMICOS) owns, so a NEW shipment
+// never inherits the previous one's weights, packages, freight, US declaration or wood
+// packaging. Keeps the operator's identity (prepared-by), the invoice date, the parts
+// library and the saved signature — those legitimately carry across shipments.
+function amClearManualFields(){
+  ['boxDim','weight','netWeight','boxes','freight','insurance','taxrate','handling','carrier','reason',
+   'destAirport','usPort','usEntryPort','usReason','usDrawback','usHts','usDeclName','usExportDate',
+   'usMfr','usMfrCity','ippcCountry','ippcReg','pkgUnits','pkgType','pkgTreat','pkgDate'
+  ].forEach(id=>{ if($(id))$(id).value=''; });
+  if($('pkgList'))$('pkgList').checked=false; if($('usDecls'))$('usDecls').checked=true;
+  if($('boxBody'))$('boxBody').innerHTML=''; if($('boxTotals'))$('boxTotals').textContent='';
+  if($('palletBody'))$('palletBody').innerHTML='';
+  ['destAirport','usEntryPort','usExportDate','usMfr','usMfrCity'].forEach(id=>{ if($(id))delete $(id).dataset.touched; });
+  if($('airportStatus'))$('airportStatus').textContent=''; if($('fillStatus'))$('fillStatus').textContent='';
+  AM_ADDRCHECK=null;
+}
+function applyShipments(list, fresh){
+  if(fresh) amClearManualFields();          // each new order-number load = clean shipment
   SHIP_ID='';                               // fresh workspace id per load
   const first=list[0];
   // Reference = every order's label, joined (e.g. "RO 662317 + RO 662316 + RO 662318").
