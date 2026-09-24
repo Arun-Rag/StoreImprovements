@@ -397,12 +397,15 @@ const SEED_PARTS={
   "PS870A2SKIT":{mfr:"PRC-DeSoto International (PPG Aerospace)",origin:"United States",city:"Sylmar, CA, USA",hs:"3214.10",note:"Polysulfide aircraft sealant (MIL-PRF-81733) — DG/hazmat"},
   "10839F":{mfr:"Pratt & Whitney Canada",origin:"Canada",city:"Longueuil, Québec, Canada",hs:"8409.10",note:"Fuel Heater — PW100 engines (OEM P&WC 3120075-02). Canadian origin — NOT US-origin."},
   "10839BEF":{mfr:"Pratt & Whitney Canada",origin:"Canada",city:"Longueuil, Québec, Canada",hs:"8409.10",note:"Fuel Heater (BEF variant) — PW100 engines. Canadian origin — NOT US-origin."},
-  "066-50001-3404":{mfr:"Honeywell International (Honeywell Aerospace)",origin:"United States",city:"Glendale, AZ, USA",hs:"9014.20",note:"IVA-81A TA/VSI — vertical-speed / TCAS display"}
+  "066-50001-3404":{mfr:"Honeywell International (Honeywell Aerospace)",origin:"United States",city:"Glendale, AZ, USA",hs:"9014.20",note:"IVA-81A TA/VSI — vertical-speed / TCAS display"},
+  "071-1319-00":{mfr:"Rockwell Collins (Collins Aerospace)",origin:"United States",city:"Cedar Rapids, IA, USA",hs:"8807.30",note:"Weather radar transceiver (ATA 34-41) — Rockwell Collins / Collins Aerospace. US-origin; verify exact P/N before signing the CBP 3311."}
 };
 // part-number family rules (prefix match) — used when the exact P/N isn't listed
 const SEED_PREFIX={
   "066-50001":{mfr:"Honeywell International (Honeywell Aerospace)",origin:"United States",city:"Glendale, AZ, USA",hs:"9014.20",note:"Honeywell IVA-81A TA/VSI vertical-speed / TCAS display family"},
-  "066-":{mfr:"Honeywell International (Honeywell Aerospace)",origin:"United States",city:"Phoenix, AZ, USA",hs:"",note:"Honeywell / Bendix avionics (066- series) — US origin (verify exact model)"}
+  "066-":{mfr:"Honeywell International (Honeywell Aerospace)",origin:"United States",city:"Phoenix, AZ, USA",hs:"",note:"Honeywell / Bendix avionics (066- series) — US origin (verify exact model)"},
+  "071-":{mfr:"Rockwell Collins (Collins Aerospace)",origin:"United States",city:"Cedar Rapids, IA, USA",hs:"",note:"Rockwell Collins / Collins Aerospace avionics (071- CPN series) — US origin (verify exact model)"},
+  "622-":{mfr:"Rockwell Collins (Collins Aerospace)",origin:"United States",city:"Cedar Rapids, IA, USA",hs:"",note:"Rockwell Collins / Collins Aerospace avionics (622- CPN series) — US origin (verify exact model)"}
 };
 
 const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
@@ -739,6 +742,7 @@ function applyShipments(list, fresh){
     n++;
   }));
   AM_ADDRCHECK = addressCrossCheck(list);   // full field-level consignee comparison across the orders
+  if(typeof fillUsManufacturer==='function') fillUsManufacturer();  // CBP 3311 manufacturer/city from the library, once all lines are in
   if(!n) addRow({});
   // Ship / pack notes from all orders, shown as read-only reference.
   const notes=[];
