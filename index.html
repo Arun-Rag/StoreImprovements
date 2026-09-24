@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Amapola Flyg — Customs Invoice Generator</title>
 <style>
   :root{color-scheme:light;--blue:#1577b8;--dark:#0f3a57;--ink:#1c1c1c;--line:#cfd6dc;--bg:#f3f6f8;--panel:#fff;--muted:#5d6b76;--ok:#1a7f4b;--warn:#b06b00}
@@ -223,7 +226,7 @@
       </div>
 
       <div class="card">
-        <h2>2 · Ship to / Consignee <span class="hint" style="text-transform:none;font-weight:400">(from document)</span></h2>
+        <h2>2 · Ship to / Consignee <span class="hint" style="text-transform:none;font-weight:400">(from AMICOS — pick the address, or type by hand)</span></h2>
         <label>Company</label><input id="toCompany" placeholder="from document">
         <label>Address</label><textarea id="toAddress" placeholder="from document"></textarea>
         <div class="row2"><div><label>Contact</label><input id="toContact"></div><div><label>E-mail</label><input id="toEmail"></div></div>
@@ -484,6 +487,29 @@ const AM_DEFAULT_URL='http://127.0.0.1:8000';
 // the company's own tariff (EORI 88073000). Used as the per-line HS default when the parts
 // library has nothing more specific. Always operator-editable, and a typed value is learned.
 const DEFAULT_HS='8807.30';
+// HS-code classification from the part description. Aircraft components are "parts of
+// aircraft" (8807.30) UNLESS they are a commodity customs always classifies by its own
+// heading — sealants, paints, batteries, tyres, oils, gases. Those are the ones the blanket
+// 8807.30 would get wrong (and that carry DG risk), so only THOSE are overridden here. Every
+// result is a SUGGESTION the operator verifies; a library/typed value always wins over this.
+const HS_RULES=[
+  [/\bLITHIUM\b/, '8507.60'],
+  [/\bNI-?CD\b|NICKEL[- ]CADMIUM/, '8507.30'],
+  [/\bBATTER(Y|IES)\b/, '8507.80'],
+  [/\bSEALANT\b|\bADHESIVE\b|\bRTV\b/, '3214.10'],
+  [/\bPAINT\b|\bPRIMER\b|\bLACQUER\b|\bENAMEL\b/, '3208.90'],
+  [/\bGREASE\b|\bLUBRICANT\b|\bLUBE\b/, '3403.19'],
+  [/\bHYDRAULIC (OIL|FLUID)\b|\bTURBINE OIL\b|\bENGINE OIL\b/, '2710.19'],
+  [/\bTYRE\b|\bTIRE\b/, '4011.30'],
+  [/\bINNER ?TUBE\b/, '4013.20'],
+  [/\bOXYGEN\b/, '2804.40'],
+  [/\bAEROSOL\b/, '3405.00'],
+];
+function classifyHS(desc){
+  const d=(desc||'').toUpperCase();
+  for(const [re,hs] of HS_RULES){ if(re.test(d)) return hs; }
+  return DEFAULT_HS;   // parts of aircraft
+}
 const AM={
   url(){ if(location.protocol==='http:'||location.protocol==='https:') return location.origin.replace(/\/+$/,'');
          return (LS.get('amapolaAmicosUrl')||AM_DEFAULT_URL).replace(/\/+$/,''); },
@@ -583,19 +609,34 @@ async function amLoad(type,no){
   amState('on', msg);
 }
 
+// Ship-to chooser: pick the party (repair vendor vs customer) AND which of its AMICOS
+// addresses (a company often has PORDER / RORDER / SHIPTO on file). Anything typed by hand
+// into the Ship-to fields is always kept — this only offers the AMICOS options.
+let AM_CONS={cands:[], ci:0, ai:0};
 function amRenderConsigneeChooser(d){
   const box=$('amChoose'); if(!box) return;
-  if(!d.consignee_candidates||d.consignee_candidates.length<2){ box.innerHTML=''; return; }
-  const rc=d.consignee_recommended_role;
-  box.innerHTML='<div class="amchoose"><div class="cap">Ship-to — confirm the consignee</div>'
-    +d.consignee_candidates.map((c,i)=>{
-      const roleLbl=c.role==='organisation'?'Repair vendor / supplier':'Customer';
-      const chk=(c.role===rc)?'checked':'';
-      return '<label><input type="radio" name="amcon" value="'+i+'" '+chk+' style="width:auto;margin:2px 0 0">'
-        +'<span><b>'+esc(c.name)+'</b> <span class="m">('+roleLbl+(c.country_name||c.country?(', '+esc(c.country_name||c.country)):'')+')</span>'
-        +(c.address_choice_required?'<span class="m"> — several addresses on file, verify</span>':'')+'</span></label>';
-    }).join('')+'</div>';
-  [...box.querySelectorAll('input[name=amcon]')].forEach(r=>r.onchange=()=>{ applyConsignee(d.consignee_candidates[+r.value]); render(); });
+  const cands=(d.consignee_candidates||[]);
+  if(!cands.length){ box.innerHTML=''; AM_CONS={cands:[],ci:0,ai:0}; return; }
+  let ci=cands.findIndex(c=>c.role===d.consignee_recommended_role); if(ci<0)ci=0;
+  const multiParty=cands.length>1, multiAddr=(cands[ci].addresses||[]).length>1;
+  if(!multiParty && !multiAddr){ box.innerHTML=''; AM_CONS={cands,ci,ai:0}; return; }  // nothing to choose
+  AM_CONS={cands, ci, ai:0};
+  amDrawConsignee();
+}
+function amDrawConsignee(){
+  const box=$('amChoose'); const {cands,ci,ai}=AM_CONS; const cand=cands[ci]; if(!cand){box.innerHTML='';return;}
+  const addrs=cand.addresses||[];
+  const party = cands.length>1 ? ('<div class="cap">Ship-to — confirm the consignee</div>'
+    + cands.map((c,i)=>{ const roleLbl=c.role==='organisation'?'Repair vendor / supplier':'Customer';
+        return '<label><input type="radio" name="amcon" value="'+i+'" '+(i===ci?'checked':'')+' style="width:auto;margin:2px 0 0">'
+          +'<span><b>'+esc(c.name)+'</b> <span class="m">('+roleLbl+(c.country_name||c.country?(', '+esc(c.country_name||c.country)):'')+')</span></span></label>'; }).join(''))
+    : '<div class="cap">Ship-to address (from AMICOS)</div>';
+  const addrSel = addrs.length>1 ? ('<label style="text-transform:none;font-weight:600;color:var(--ink);margin:7px 0 2px;display:block">Delivery address — '+addrs.length+' on file for '+esc(cand.name)+'</label>'
+    + '<select id="amAddrSel">'+addrs.map((a,i)=>'<option value="'+i+'" '+(i===ai?'selected':'')+'>'+esc((a.address_type||'ADDR')+' · '+((a.lines||[])[0]||'')+((a.lines||[])[1]?(', '+a.lines[1]):''))+'</option>').join('')+'</select>'
+    + '<div class="hint" style="margin-top:3px">…or just edit the Ship-to fields by hand — whatever you type is kept.</div>') : '';
+  box.innerHTML='<div class="amchoose">'+party+addrSel+'</div>';
+  [...box.querySelectorAll('input[name=amcon]')].forEach(r=>r.onchange=()=>{ AM_CONS.ci=+r.value; AM_CONS.ai=0; applyConsignee(cands[+r.value],0); amDrawConsignee(); render(); });
+  const sel=$('amAddrSel'); if(sel) sel.onchange=()=>{ AM_CONS.ai=+sel.value; applyConsignee(cands[AM_CONS.ci],+sel.value); render(); };
 }
 
 function amReasonFor(type){
@@ -634,16 +675,18 @@ function amResolveCountry(c){
   return '';
 }
 
-function applyConsignee(c){
+function applyConsignee(c, ai){
   if(!c) return;
   $('toCompany').value=[c.name,c.name2].filter(Boolean).join(' ');
-  if(c.best_address)$('toAddress').value=c.best_address;
-  $('toContact').value=c.contact||'';
+  const addrs=c.addresses||[], chosen=(ai!=null && addrs[ai])?addrs[ai]:null;
+  const addrText=chosen?chosen.printable:c.best_address;
+  if(addrText)$('toAddress').value=addrText;
+  $('toContact').value=(chosen&&chosen.contact)||c.contact||'';
   $('toEmail').value=c.email||'';
   $('custId').value=c.org_id||'';
-  // Reflect the chosen consignee: set the matched destination, or clear it (so a stale
-  // previous destination never lingers when the new party isn't in the curated list).
-  $('country').value=amResolveCountry(c); updateCountryUI();
+  // Reflect the chosen consignee/address: set the matched destination, or clear it (so a
+  // stale previous destination never lingers when the new party isn't in the curated list).
+  $('country').value=amResolveCountry(chosen?Object.assign({},c,{best_address:chosen.printable}):c); updateCountryUI();
   if(c.currency){ const has=[...$('currency').options].some(o=>o.value===c.currency); if(has)$('currency').value=c.currency; }
   applyAirport(); scheduleGeo();
 }
@@ -669,7 +712,7 @@ function applyShipments(list){
     const tr=addRow({pn:l.part_no,sn:l.serial_no,bn:l.batch_no,desc:l.description,qty:(l.qty||''),
                      val:(l.unit_value!=null?l.unit_value:''),src:'amicos'});   // proforma value from AMICOS (SO/SM/CO), editable
     autoFromLib(tr);                                              // HS + origin from the parts library
-    if(!tr.querySelector('.hs').value) tr.querySelector('.hs').value=DEFAULT_HS; // else Amapola's aircraft-parts tariff
+    if(!tr.querySelector('.hs').value) tr.querySelector('.hs').value=classifyHS(l.description); // library first, else classify from the description (8807.30 default)
     n++;
   }));
   AM_ADDRCHECK = addressCrossCheck(list);   // full field-level consignee comparison across the orders
@@ -1250,7 +1293,7 @@ function updateReadiness(){
     const L=lib[pn.toUpperCase()]||{};
     if(!origin){ originMissing++; cls='rs-block'; }
     else if(L.origin) cls='rs-verified';
-    if(hs===DEFAULT_HS && !L.hs){ hsDefault++; if(cls!=='rs-block' && cls!=='rs-verified') cls='rs-default'; }
+    if(hs && tr.dataset.src==='amicos' && !L.hs){ hsDefault++; if(cls!=='rs-block' && cls!=='rs-verified') cls='rs-default'; }
     if(sn){ if(seenSN[sn]){ issues.push({sev:'warn',txt:'Duplicate serial <b>'+esc(sn)+'</b> on more than one line — verify each unit.'}); } seenSN[sn]=1; }
     const hits=dgHits(desc+' '+pn);
     if(hits.length){ dgAny=true; cls='rs-block'; tr.title='Possible dangerous goods: '+hits.join('; '); } else { tr.removeAttribute('title'); }
@@ -1259,7 +1302,7 @@ function updateReadiness(){
 
   if(!$('country').value) issues.unshift({sev:'block',txt:'No destination country selected — the required customs documents can’t be determined.'});
   if(originMissing) issues.push({sev:'block',txt:'Country of origin missing on <b>'+originMissing+'</b> line'+(originMissing>1?'s':'')+' — required on the customs declaration.'});
-  if(hsDefault) issues.push({sev:'warn',txt:'HS code is the <b>8807.30</b> default on <b>'+hsDefault+'</b> line'+(hsDefault>1?'s':'')+' — verify (esp. sealants, batteries, chemicals, tools).'});
+  if(hsDefault) issues.push({sev:'warn',txt:'HS code auto-suggested on <b>'+hsDefault+'</b> line'+(hsDefault>1?'s':'')+' (from the description) — verify, esp. sealants, batteries, chemicals, tools.'});
   if(dgAny){ const ack=$('dgAck')&&$('dgAck').checked;
     issues.push({sev:ack?'ok':'block',
       txt:'Possible <b>dangerous goods</b> from the part description'+(ack?' — reviewed.':' — classify, or confirm not applicable, before shipping.'),
